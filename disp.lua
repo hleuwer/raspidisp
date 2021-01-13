@@ -1,0 +1,394 @@
+local iup = require "iuplua"
+require "iupluaim"
+local pretty = require "pl.pretty"
+
+-- Couple of constants and adjustments
+local yes, no = "YES", "NO"
+local vertical, horizontal = "VERTICAL", "HORIZONTAL"
+local HGAP, VGAP = 20, 5
+local wdays = {
+   "Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"
+}
+local scstate = "unknown"
+local onoff = {
+   off = {
+      hour = tonumber(os.getenv("off_h")) or 22,
+      min = tonumber(os.getenv("off_m")) or 30
+   },
+   on = {
+      hour = tonumber(os.getenv("on_h")) or 9,
+      min = tonumber(os.getenv("on_m")) or 0
+   }
+}
+
+-- Variables
+local screenOn = true
+local clock
+local date
+local weather, weatherimage
+local forecast, forecastimage = {}, {}
+local screensize =  iup.GetGlobal("SCREENSIZE")
+local screensize = "810 x 490"
+local cnt = 1
+local stat
+
+-- List of computers to check
+local computers = {
+   {dname = "macbookpro .. ", hname = "macbookpro"},
+   {dname = "raspi 1 ..... ", hname = "raspberrypi1"},
+   {dname = "raspi 2 ..... ", hname = "raspberrypi2"},
+   {dname = "raspi 3 ..... ", hname = "raspberrypi3"},
+   {dname = "raspi 4 ..... ", hname = "raspberrypi4"},
+   {dname = "raspi 5 ..... ", hname = "raspberrypi5"},
+   {dname = "maclinux: ... ", hname = "maclinux"}
+}
+
+-- Load and condition weather icons
+local weatherImageNames = {
+"01d", "02d", "03d", "04d", "09d", "10d", "11d", "13d", "50d",
+"01n", "02n", "03n", "04n", "09n", "10n", "11n", "13n", "50n",
+}
+
+local weatherImages, forecastImages = {}, {}
+
+for i,v in ipairs(weatherImageNames) do
+   weatherImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/"..v.."@2x.png")
+   weatherImages[v].resize = "40x40"
+   forecastImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/"..v.."@2x.png")
+   forecastImages[v].resize = "32x32"
+end
+
+local luaicon = iup.LoadImage("/usr/local/share/luanagios/img/luanagios.png")
+--------------------------------------------------------------------------------
+-- Computer status evaluation and display.
+-- @param index Index to retrieve computer info: display and hostname
+-- @param check Control what to do:
+--              flase - generate diag elements
+--              true  - check status and display result
+-- @return IUP element showing the computer status
+--------------------------------------------------------------------------------
+local function rechner(index, check)
+   local title, s
+   if check == true then
+      s = io.popen("check_host -H " ..
+		   computers[index].hname ..
+		   " -m uptime | cut -d ' ' -f 1"):read("*a")
+      if string.sub(s, 1,2) ~= "OK" then
+	 s = "--"
+      end
+   else
+      s = "--"
+      computers[index].label = iup.flatlabel{
+	 font = "Courier New, Bold 18",
+      }
+   end
+   computers[index].label.title = computers[index].dname .. s
+   return computers[index].label
+end
+
+--------------------------------------------------------------------------------
+-- Date evaluation and display
+-- @param check Control what to do:
+--              flase - generate diag elements
+--              true  - check status and display result
+-- @return IUP element showing the date
+--------------------------------------------------------------------------------
+local function datum(check)
+   local t = os.date("*t")
+   if check == false then
+      date = iup.label{
+	 font = "Arial, Bold 36",
+      }
+   end
+   date.title = string.format("%s, %02d.%02d.%04d", wdays[t.wday], t.day, t.month, t.year)
+   return date
+end
+
+--------------------------------------------------------------------------------
+-- Time evaluation and display
+-- @param check Control what to do:
+--              flase - generate diag elements
+--              true  - check status and display result
+-- @return IUP element showing the time
+--------------------------------------------------------------------------------
+local function uhrzeit(check)
+   local t = os.date("*t")
+   if check == false then
+      clock = iup.label{
+	 font = "Arial, Bold 48",
+	 title = string.format("%02d:%02d:%02d", t.hour, t.min, t.sec)
+      }
+   end
+   clock.title = string.format("%02d:%02d:%02d", t.hour, t.min, t.sec)
+   return clock
+end
+
+--------------------------------------------------------------------------------
+-- Weather status evaluation and display.
+-- @param check Control what to do:
+--              flase - generate diag elements
+--              true  - check status and display result
+local function wetter(check)
+   if check == true then
+      local s = io.popen("check_weather -l 'Gross Kummerfeld' -L de -m forecast -P `cat ~/.appid` -t"):read("*a")
+      local f = load(s)
+      local t
+      if f ~= nil then
+	 t = f()
+      end
+      if t ~= nil then
+	 weather.title = string.format("%+3.1f °C - %d %% - %s",
+				       t.current.temp, t.current.humidity,
+				       t.current.weather[1].description)
+	 weatherimage.image = weatherImages[t.current.weather[1].icon]
+--	 print("#1#", t.current.weather[1].icon, weatherImages[t.current.weather[1].icon])
+	 local rt = {}
+	 for k, u in ipairs(t.daily) do
+	    forecast[k].title = string.format("%s: %+3.1f °C %5s %5s %s",
+					os.date("%d.%m", u.dt),
+					u.temp.day,
+					os.date("%H:%M", u.sunrise),
+					os.date("%H:%M", u.sunset),
+					u.weather[1].description)
+	    forecastimage[k].image = forecastImages[u.weather[1].icon]
+--	    print("#2#", u.weather[1].icon, forecastImages[u.weather[1].icon])
+	 end
+      end
+   else
+      weather = iup.label{
+	 font = "Courier New, Bold 18",
+	 title = "wait ...",
+      }
+      
+      weatherimage = iup.label{
+	 image = weatherImages["50d"],
+      }
+      local forecastcont = {}
+      for i = 1, 8 do
+	 forecast[i] = iup.label{
+	    font = "Courier New, Bold 12",
+	    title = "wait ...",
+	 }
+	 forecastimage[i] = iup.label{
+	    image = forecastImages["50d"],
+	 }
+	 forecastcont[i] = iup.hbox{gap=5, normalizesize="VERTICAL", forecastimage[i], forecast[i]}
+      end
+      return iup.hbox{gap=5, normalizesize="VERTICAL", weatherimage, weather}, iup.vbox{gap=-3, table.unpack(forecastcont)}
+   end
+end
+
+--------------------------------------------------------------------------------
+-- Couonter status (just temporary help  - should vanish)
+-- @param check Control what to do:
+--              flase - generate diag elements
+--              true  - check status and display result
+-- @return IUP element.
+--------------------------------------------------------------------------------
+local function status(check)
+   if check == false then
+      statcount = iup.label{
+	 title = string.format("%d", 0)
+      }
+      statscreen = iup.label{
+	 title = string.format("-")
+      }
+   end
+   statcount.title = string.format("%d", cnt % 1200)
+   local sstat =  io.popen("/usr/local/sbin/screen-show"):read()
+   if sstat == "0" then
+      statscreen.title = "on"
+   else
+      statscreen.title = "off"
+   end
+   return iup.hbox{statscreen, statcount}
+end
+
+--------------------------------------------------------------------------------
+-- Check whether screen shall be on (day) or off (night).
+-- @param now current time
+-- @return screen state
+--------------------------------------------------------------------------------
+local function checkOnOff(now)
+   if scstate == "on" then
+      if now.hour == onoff.off.hour and now.min == onoff.off.min then
+	 io.popen("/usr/local/sbin/screen-off"):read()
+         scstate = "off"
+      end
+   elseif scstate == "off" then
+      if now.hour == onoff.on.hour and  now.min == onoff.on.min then
+	 io.popen("/usr/local/sbin/screen-on"):read()
+         scstate = "on"
+      end
+   elseif scstate == "unknown" then
+      local on_mins = onoff.on.hour * 60 + onoff.on.min
+      local off_mins = onoff.off.hour * 60 + onoff.off.min
+      local now_mins = now.hour * 60 + now.min
+      if now_mins >= on_mins and now_mins < off_mins then
+         scstate = "on"
+      else
+         scstate = "off"
+      end
+   end
+   return scstate
+end
+
+local sbutton = iup.button{
+   title = scstate,
+   action = function(self) os.exit(0) end
+}
+
+-------------------------------------------------------------------------------
+-- Calendar.
+-- @param check Control what to do:
+--              flase - generate diag elements
+--              true  - check status and display result
+-- @return IUP element 
+-------------------------------------------------------------------------------
+local function kalender(check)
+   if check == true then
+      cal.value = "TODAY"
+   else
+      cal = iup.calendar{
+	 weeknumbers = yes,
+	 font = "Courier, Bold 12",
+	 value = "TODAY"
+      }
+   end
+   return cal
+end
+
+-------------------------------------------------------------------------------
+-- Create  Icon in upper left corner
+-- @param which  "cal" for calendar, "lua" for Luanagios icon
+-- @return flatfram with selected icon embedded.
+-------------------------------------------------------------------------------
+local function icon(which)
+   which = which or "cal"
+   if which == "cal" then
+      return
+	 iup.flatframe{
+	    marginleft = 5,
+	    margintop = 5,
+	    kalender(false),
+	 },
+	 iup.space{
+	    size = "x10",
+	    expand = no
+	 }
+	 
+   elseif which == "lua" then
+      return
+	 iup.flatframe{
+	    bgcolor = "132 132 132",
+	    iup.label{
+	       image = luaicon,
+	    }
+	 },
+	 iup.space{
+	    size = "x10",
+	    expand = no
+	 }
+   end
+end
+
+-------------------------------------------------------------------------------
+-- This is the main dialog
+-------------------------------------------------------------------------------
+local dlg = iup.dialog {
+--   size = "FULL",
+   rastersize = screensize,
+   --   font = "Arial, Bold 18"
+   menubox = no,
+   maxbox = no,
+   minbox = no,
+   resize = no,
+   iup.vbox {
+      iup.hbox {
+	 gap = HGAP,
+	 iup.vbox {
+	    gap = 3,
+	    icon("cal"),
+	    iup.hbox {
+	       iup.label{
+		  font = "Arial, Bold 18",
+		  title = "  "
+		  --title = "RECHNER:"
+	       },
+--	       sbutton,
+	       normalizesize = "VERTICAL"
+	    },
+	    rechner(1, false),
+	    rechner(2, false),
+	    rechner(3, false),
+	    rechner(4, false),
+	    rechner(5, false),
+	    rechner(6, false),
+	    rechner(7, false)
+	 },
+	 iup.vbox {
+	    width = "10x"
+	 },
+	 iup.vbox {
+	    gap = 10,
+	    datum(false),
+	    uhrzeit(false),
+	    wetter(false)
+	 },
+      },
+      iup.space {
+	 size="x2",
+	 expand = yes
+      },
+      iup.hbox {
+	 gap = HGAP,
+	 iup.hbox {
+	    iup.button{
+	       title = "Dunkel",
+	       expand = horizontal,
+	       action = function(self)
+		  os.execute("/usr/local/sbin/screen-off")
+	       end
+	    },
+	    status(false),
+	    iup.button{
+	       title = "Schließen",
+	       expand = horizontal,
+	       action = function(self) os.exit(0) end
+	    }
+	 }
+      }
+   }
+}
+
+dlg:show()
+
+local timer = iup.timer{
+   time = 500,
+   action_cb = function(self)
+      -- 300 second interval - 5 minutes
+      if cnt % (600) == 10 then
+	 for i = 1, #computers do
+	    rechner(i, true)
+	 end
+      end
+      -- 600 second interval - 10  minutes
+      if cnt % (1200) == 12 then
+	 wetter(true)
+      end
+      -- 1 second interval
+      if cnt % 2 == 0 then
+      end
+      local t = os.date("*t")
+      uhrzeit(true)
+      datum(true)
+      kalender(true)
+      status(true)
+      cnt = cnt + 1
+      sbutton.title = checkOnOff(t)
+   end
+}
+
+timer.run = yes
+
+iup.MainLoop()

@@ -1,0 +1,1646 @@
+return {
+  daily = {
+    {
+      dt = 1609412400,
+      feels_like = {
+        morn = -3,2,
+        day = -2,1,
+        night = -2,74,
+        eve = -1,78
+      },
+      dew_point = 0,91,
+      pop = 0,04,
+      sunset = 1609427180,
+      clouds = 100,
+      temp = {
+        eve = 2,45,
+        morn = 2,6,
+        min = 1,12,
+        max = 4,43,
+        night = 1,82,
+        day = 3,47
+      },
+      wind_speed = 5,3,
+      wind_deg = 210,
+      uvi = 0,13,
+      pressure = 1002,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      humidity = 83,
+      sunrise = 1609400340
+    },
+    {
+      rain = 4,16,
+      dt = 1609498800,
+      feels_like = {
+        morn = -1,06,
+        day = 0,23,
+        night = -0,01,
+        eve = -0,6
+      },
+      dew_point = 1,7,
+      pop = 0,6,
+      sunset = 1609513645,
+      clouds = 84,
+      temp = {
+        eve = 3,41,
+        morn = 2,44,
+        min = 1,7,
+        max = 3,53,
+        night = 3,
+        day = 3,15
+      },
+      wind_speed = 1,71,
+      wind_deg = 245,
+      uvi = 0,23,
+      pressure = 1006,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10d",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      humidity = 90,
+      sunrise = 1609486730
+    },
+    {
+      dt = 1609585200,
+      feels_like = {
+        morn = -2,55,
+        day = -0,23,
+        night = -1,89,
+        eve = -1,33
+      },
+      dew_point = -0,3,
+      pop = 0,46,
+      sunset = 1609600113,
+      clouds = 51,
+      temp = {
+        eve = 1,52,
+        morn = 0,62,
+        min = 0,17,
+        max = 3,08,
+        night = 1,41,
+        day = 2,65
+      },
+      wind_speed = 1,26,
+      wind_deg = 49,
+      uvi = 0,27,
+      pressure = 1014,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      humidity = 82,
+      sunrise = 1609573116
+    },
+    {
+      rain = 0,36,
+      dt = 1609671600,
+      feels_like = {
+        morn = -4,
+        day = -1,84,
+        night = -4,16,
+        eve = -3,43
+      },
+      dew_point = -0,07,
+      pop = 0,52,
+      sunset = 1609686585,
+      clouds = 67,
+      temp = {
+        eve = 2,59,
+        morn = -0,28,
+        min = -0,31,
+        max = 3,45,
+        night = 2,73,
+        day = 3,45
+      },
+      wind_speed = 4,72,
+      wind_deg = 56,
+      uvi = 0,38,
+      pressure = 1020,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10d",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      humidity = 78,
+      sunrise = 1609659499
+    },
+    {
+      dew_point = 1,78,
+      rain = 4,02,
+      dt = 1609758000,
+      feels_like = {
+        morn = -4,95,
+        day = -5,13,
+        night = -3,72,
+        eve = -4,49
+      },
+      snow = 0,31,
+      pop = 0,98,
+      sunset = 1609773059,
+      clouds = 100,
+      temp = {
+        eve = 2,94,
+        morn = 2,7,
+        min = 2,44,
+        max = 3,28,
+        night = 3,28,
+        day = 2,59
+      },
+      wind_speed = 8,57,
+      wind_deg = 66,
+      uvi = 0,17,
+      pressure = 1023,
+      weather = {
+        {
+          main = "Snow",
+          icon = "13d",
+          description = "Regen und Schnee",
+          id = 616
+        }
+      },
+      humidity = 94,
+      sunrise = 1609745878
+    },
+    {
+      rain = 8,16,
+      dt = 1609844400,
+      feels_like = {
+        morn = -2,94,
+        day = -1,06,
+        night = -2,32,
+        eve = -1,49
+      },
+      dew_point = 3,59,
+      pop = 1,
+      sunset = 1609859536,
+      clouds = 100,
+      temp = {
+        eve = 4,4,
+        morn = 4,31,
+        min = 3,92,
+        max = 5,3,
+        night = 3,97,
+        day = 4,95
+      },
+      wind_speed = 6,55,
+      wind_deg = 82,
+      uvi = 1,
+      pressure = 1016,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10d",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      humidity = 90,
+      sunrise = 1609832254
+    },
+    {
+      rain = 0,91,
+      dt = 1609930800,
+      feels_like = {
+        morn = -4,95,
+        day = -4,61,
+        night = -4,61,
+        eve = -4,41
+      },
+      dew_point = -2,3,
+      pop = 0,77,
+      sunset = 1609946017,
+      clouds = 99,
+      temp = {
+        eve = 0,13,
+        morn = 1,46,
+        min = -0,29,
+        max = 3,39,
+        night = -0,29,
+        day = 1,44
+      },
+      wind_speed = 5,68,
+      wind_deg = 87,
+      uvi = 1,
+      pressure = 1019,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10d",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      humidity = 86,
+      sunrise = 1609918626
+    },
+    {
+      dew_point = -1,01,
+      dt = 1610017200,
+      feels_like = {
+        morn = -3,73,
+        day = -1,21,
+        night = -2,81,
+        eve = -3,59
+      },
+      snow = 0,32,
+      pop = 0,4,
+      sunset = 1610032499,
+      clouds = 98,
+      temp = {
+        eve = 0,03,
+        morn = -0,62,
+        min = -0,62,
+        max = 1,11,
+        night = 0,62,
+        day = 1,11
+      },
+      wind_speed = 0,41,
+      wind_deg = 174,
+      uvi = 1,
+      pressure = 1013,
+      weather = {
+        {
+          main = "Snow",
+          icon = "13d",
+          description = "Mäßiger Schnee",
+          id = 600
+        }
+      },
+      humidity = 90,
+      sunrise = 1610004994
+    }
+  },
+  current = {
+    dt = 1609430570,
+    feels_like = -2,
+    weather = {
+      {
+        main = "Clouds",
+        icon = "04n",
+        description = "Bedeckt",
+        id = 804
+      }
+    },
+    wind_deg = 200,
+    sunset = 1609427180,
+    clouds = 99,
+    temp = 3,08,
+    wind_speed = 4,6,
+    dew_point = 0,81,
+    uvi = 0,
+    pressure = 1001,
+    visibility = 10000,
+    humidity = 85,
+    sunrise = 1609400340
+  },
+  lon = 10,08,
+  lat = 54,05,
+  hourly = {
+    {
+      dt = 1609430400,
+      feels_like = -1,3,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 99,
+      temp = 3,08,
+      wind_speed = 3,6,
+      wind_deg = 201,
+      uvi = 0,
+      pressure = 1001,
+      visibility = 10000,
+      humidity = 85,
+      dew_point = 0,81
+    },
+    {
+      dt = 1609434000,
+      feels_like = -1,78,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 95,
+      temp = 2,45,
+      wind_speed = 3,32,
+      wind_deg = 193,
+      uvi = 0,
+      pressure = 1001,
+      visibility = 10000,
+      humidity = 87,
+      dew_point = 0,51
+    },
+    {
+      dt = 1609437600,
+      feels_like = -2,69,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 83,
+      temp = 1,63,
+      wind_speed = 3,37,
+      wind_deg = 189,
+      uvi = 0,
+      pressure = 1002,
+      visibility = 10000,
+      humidity = 90,
+      dew_point = 0,17
+    },
+    {
+      dt = 1609441200,
+      feels_like = -2,91,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "03n",
+          description = "Mäßig bewölkt",
+          id = 802
+        }
+      },
+      clouds = 33,
+      temp = 1,2,
+      wind_speed = 3,05,
+      wind_deg = 193,
+      uvi = 0,
+      pressure = 1002,
+      visibility = 10000,
+      humidity = 92,
+      dew_point = 0,05
+    },
+    {
+      dt = 1609444800,
+      feels_like = -3,06,
+      pop = 0,01,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "03n",
+          description = "Mäßig bewölkt",
+          id = 802
+        }
+      },
+      clouds = 37,
+      temp = 1,12,
+      wind_speed = 3,13,
+      wind_deg = 197,
+      uvi = 0,
+      pressure = 1003,
+      visibility = 10000,
+      humidity = 92,
+      dew_point = -0,03
+    },
+    {
+      dt = 1609448400,
+      feels_like = -2,94,
+      pop = 0,02,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 54,
+      temp = 1,36,
+      wind_speed = 3,42,
+      wind_deg = 192,
+      uvi = 0,
+      pressure = 1003,
+      visibility = 10000,
+      humidity = 94,
+      dew_point = 0,53
+    },
+    {
+      dt = 1609452000,
+      feels_like = -2,74,
+      pop = 0,03,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 65,
+      temp = 1,82,
+      wind_speed = 3,82,
+      wind_deg = 192,
+      uvi = 0,
+      pressure = 1003,
+      visibility = 10000,
+      humidity = 92,
+      dew_point = 0,78
+    },
+    {
+      dt = 1609455600,
+      feels_like = -2,75,
+      pop = 0,03,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 71,
+      temp = 1,81,
+      wind_speed = 3,81,
+      wind_deg = 197,
+      uvi = 0,
+      pressure = 1004,
+      visibility = 10000,
+      humidity = 92,
+      dew_point = 0,71
+    },
+    {
+      dt = 1609459200,
+      feels_like = -2,48,
+      pop = 0,04,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 76,
+      temp = 2,15,
+      wind_speed = 3,93,
+      wind_deg = 200,
+      uvi = 0,
+      pressure = 1004,
+      visibility = 10000,
+      humidity = 90,
+      dew_point = 0,77
+    },
+    {
+      dt = 1609462800,
+      feels_like = -2,24,
+      pop = 0,12,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 100,
+      temp = 2,2,
+      wind_speed = 3,67,
+      wind_deg = 205,
+      uvi = 0,
+      pressure = 1003,
+      visibility = 10000,
+      humidity = 90,
+      dew_point = 0,78
+    },
+    {
+      dt = 1609466400,
+      feels_like = -2,06,
+      pop = 0,12,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 100,
+      temp = 2,23,
+      wind_speed = 3,49,
+      wind_deg = 214,
+      uvi = 0,
+      pressure = 1003,
+      visibility = 10000,
+      humidity = 91,
+      dew_point = 1
+    },
+    {
+      dt = 1609470000,
+      feels_like = -1,77,
+      pop = 0,07,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 100,
+      temp = 2,25,
+      wind_speed = 3,21,
+      wind_deg = 223,
+      uvi = 0,
+      pressure = 1004,
+      visibility = 10000,
+      humidity = 94,
+      dew_point = 1,42
+    },
+    {
+      dt = 1609473600,
+      feels_like = -1,37,
+      pop = 0,07,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 100,
+      temp = 2,39,
+      wind_speed = 2,9,
+      wind_deg = 234,
+      uvi = 0,
+      pressure = 1004,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 1,74
+    },
+    {
+      dt = 1609477200,
+      feels_like = -1,06,
+      pop = 0,07,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 100,
+      temp = 2,44,
+      wind_speed = 2,54,
+      wind_deg = 242,
+      uvi = 0,
+      pressure = 1004,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 1,79
+    },
+    {
+      dt = 1609480800,
+      feels_like = -0,85,
+      pop = 0,07,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 100,
+      temp = 2,32,
+      wind_speed = 2,05,
+      wind_deg = 252,
+      uvi = 0,
+      pressure = 1004,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 1,65
+    },
+    {
+      dt = 1609484400,
+      feels_like = -0,9,
+      pop = 0,13,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 87,
+      temp = 1,97,
+      wind_speed = 1,53,
+      wind_deg = 252,
+      uvi = 0,
+      pressure = 1005,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 1,36
+    },
+    {
+      dt = 1609488000,
+      feels_like = -1,11,
+      pop = 0,08,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 83,
+      temp = 1,7,
+      wind_speed = 1,43,
+      wind_deg = 259,
+      uvi = 0,
+      pressure = 1005,
+      visibility = 10000,
+      humidity = 96,
+      dew_point = 1,15
+    },
+    {
+      dt = 1609491600,
+      feels_like = -0,57,
+      pop = 0,04,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 82,
+      temp = 2,11,
+      wind_speed = 1,3,
+      wind_deg = 260,
+      uvi = 0,14,
+      pressure = 1006,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 1,4
+    },
+    {
+      dt = 1609495200,
+      feels_like = -0,06,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 82,
+      temp = 2,63,
+      wind_speed = 1,33,
+      wind_deg = 251,
+      uvi = 0,18,
+      pressure = 1006,
+      visibility = 10000,
+      humidity = 92,
+      dew_point = 1,58
+    },
+    {
+      dt = 1609498800,
+      feels_like = 0,23,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 84,
+      temp = 3,15,
+      wind_speed = 1,71,
+      wind_deg = 245,
+      uvi = 0,23,
+      pressure = 1006,
+      visibility = 10000,
+      humidity = 90,
+      dew_point = 1,7
+    },
+    {
+      dt = 1609502400,
+      feels_like = 0,14,
+      pop = 0,03,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 86,
+      temp = 3,2,
+      wind_speed = 1,95,
+      wind_deg = 247,
+      uvi = 0,22,
+      pressure = 1006,
+      visibility = 6850,
+      humidity = 91,
+      dew_point = 2,01
+    },
+    {
+      rain = {
+        ["1h"] = 0,19
+      },
+      dt = 1609506000,
+      feels_like = 0,02,
+      pop = 0,29,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10d",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      clouds = 100,
+      temp = 2,92,
+      wind_speed = 1,8,
+      wind_deg = 235,
+      uvi = 0,17,
+      pressure = 1006,
+      visibility = 452,
+      humidity = 95,
+      dew_point = 2,31
+    },
+    {
+      rain = {
+        ["1h"] = 0,46
+      },
+      dt = 1609509600,
+      feels_like = 0,03,
+      pop = 0,41,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10d",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      clouds = 100,
+      temp = 2,92,
+      wind_speed = 1,82,
+      wind_deg = 219,
+      uvi = 0,07,
+      pressure = 1006,
+      visibility = 441,
+      humidity = 96,
+      dew_point = 2,37
+    },
+    {
+      rain = {
+        ["1h"] = 0,81
+      },
+      dt = 1609513200,
+      feels_like = -0,3,
+      pop = 0,53,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10d",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      clouds = 100,
+      temp = 3,02,
+      wind_speed = 2,42,
+      wind_deg = 199,
+      uvi = 0,
+      pressure = 1006,
+      visibility = 8620,
+      humidity = 95,
+      dew_point = 2,34
+    },
+    {
+      rain = {
+        ["1h"] = 0,65
+      },
+      dt = 1609516800,
+      feels_like = -0,78,
+      pop = 0,55,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10n",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      clouds = 100,
+      temp = 3,16,
+      wind_speed = 3,34,
+      wind_deg = 207,
+      uvi = 0,
+      pressure = 1007,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 2,44
+    },
+    {
+      rain = {
+        ["1h"] = 0,39
+      },
+      dt = 1609520400,
+      feels_like = -0,6,
+      pop = 0,6,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10n",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      clouds = 100,
+      temp = 3,41,
+      wind_speed = 3,47,
+      wind_deg = 224,
+      uvi = 0,
+      pressure = 1007,
+      visibility = 10000,
+      humidity = 94,
+      dew_point = 2,59
+    },
+    {
+      rain = {
+        ["1h"] = 0,84
+      },
+      dt = 1609524000,
+      feels_like = -0,54,
+      pop = 0,6,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10n",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      clouds = 100,
+      temp = 3,3,
+      wind_speed = 3,24,
+      wind_deg = 223,
+      uvi = 0,
+      pressure = 1008,
+      visibility = 8850,
+      humidity = 95,
+      dew_point = 2,59
+    },
+    {
+      rain = {
+        ["1h"] = 0,68
+      },
+      dt = 1609527600,
+      feels_like = -0,19,
+      pop = 0,58,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10n",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      clouds = 100,
+      temp = 3,43,
+      wind_speed = 2,95,
+      wind_deg = 231,
+      uvi = 0,
+      pressure = 1008,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 2,82
+    },
+    {
+      rain = {
+        ["1h"] = 0,14
+      },
+      dt = 1609531200,
+      feels_like = 0,16,
+      pop = 0,55,
+      weather = {
+        {
+          main = "Rain",
+          icon = "10n",
+          description = "Leichter Regen",
+          id = 500
+        }
+      },
+      clouds = 99,
+      temp = 3,53,
+      wind_speed = 2,62,
+      wind_deg = 245,
+      uvi = 0,
+      pressure = 1008,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 2,85
+    },
+    {
+      dt = 1609534800,
+      feels_like = -0,02,
+      pop = 0,5,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 96,
+      temp = 3,16,
+      wind_speed = 2,26,
+      wind_deg = 256,
+      uvi = 0,
+      pressure = 1009,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 2,53
+    },
+    {
+      dt = 1609538400,
+      feels_like = -0,01,
+      pop = 0,42,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 96,
+      temp = 3,
+      wind_speed = 2,01,
+      wind_deg = 274,
+      uvi = 0,
+      pressure = 1009,
+      visibility = 10000,
+      humidity = 96,
+      dew_point = 2,48
+    },
+    {
+      dt = 1609542000,
+      feels_like = 0,03,
+      pop = 0,42,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 96,
+      temp = 2,88,
+      wind_speed = 1,76,
+      wind_deg = 296,
+      uvi = 0,
+      pressure = 1010,
+      visibility = 10000,
+      humidity = 96,
+      dew_point = 2,35
+    },
+    {
+      dt = 1609545600,
+      feels_like = -0,3,
+      pop = 0,46,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 97,
+      temp = 2,52,
+      wind_speed = 1,59,
+      wind_deg = 326,
+      uvi = 0,
+      pressure = 1010,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 1,92
+    },
+    {
+      dt = 1609549200,
+      feels_like = -0,82,
+      pop = 0,33,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 92,
+      temp = 2,02,
+      wind_speed = 1,5,
+      wind_deg = 356,
+      uvi = 0,
+      pressure = 1010,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 1,36
+    },
+    {
+      dt = 1609552800,
+      feels_like = -1,3,
+      pop = 0,3,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 86,
+      temp = 1,46,
+      wind_speed = 1,27,
+      wind_deg = 11,
+      uvi = 0,
+      pressure = 1010,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 0,8
+    },
+    {
+      dt = 1609556400,
+      feels_like = -1,92,
+      pop = 0,3,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 81,
+      temp = 0,97,
+      wind_speed = 1,35,
+      wind_deg = 11,
+      uvi = 0,
+      pressure = 1010,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = 0,33
+    },
+    {
+      dt = 1609560000,
+      feels_like = -2,25,
+      pop = 0,3,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 79,
+      temp = 0,79,
+      wind_speed = 1,49,
+      wind_deg = 13,
+      uvi = 0,
+      pressure = 1011,
+      visibility = 10000,
+      humidity = 94,
+      dew_point = 0,02
+    },
+    {
+      dt = 1609563600,
+      feels_like = -2,55,
+      pop = 0,24,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 78,
+      temp = 0,62,
+      wind_speed = 1,67,
+      wind_deg = 19,
+      uvi = 0,
+      pressure = 1011,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = -0,33
+    },
+    {
+      dt = 1609567200,
+      feels_like = -2,67,
+      pop = 0,21,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 79,
+      temp = 0,48,
+      wind_speed = 1,61,
+      wind_deg = 31,
+      uvi = 0,
+      pressure = 1012,
+      visibility = 10000,
+      humidity = 95,
+      dew_point = -0,62
+    },
+    {
+      dt = 1609570800,
+      feels_like = -2,84,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04n",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 63,
+      temp = 0,26,
+      wind_speed = 1,53,
+      wind_deg = 34,
+      uvi = 0,
+      pressure = 1012,
+      visibility = 10000,
+      humidity = 96,
+      dew_point = -0,85
+    },
+    {
+      dt = 1609574400,
+      feels_like = -2,82,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 52,
+      temp = 0,17,
+      wind_speed = 1,38,
+      wind_deg = 32,
+      uvi = 0,
+      pressure = 1013,
+      visibility = 10000,
+      humidity = 97,
+      dew_point = -0,96
+    },
+    {
+      dt = 1609578000,
+      feels_like = -1,94,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "03d",
+          description = "Mäßig bewölkt",
+          id = 802
+        }
+      },
+      clouds = 49,
+      temp = 0,94,
+      wind_speed = 1,24,
+      wind_deg = 30,
+      uvi = 0,16,
+      pressure = 1013,
+      visibility = 10000,
+      humidity = 92,
+      dew_point = -0,67
+    },
+    {
+      dt = 1609581600,
+      feels_like = -0,94,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "03d",
+          description = "Mäßig bewölkt",
+          id = 802
+        }
+      },
+      clouds = 49,
+      temp = 1,92,
+      wind_speed = 1,22,
+      wind_deg = 31,
+      uvi = 0,21,
+      pressure = 1014,
+      visibility = 10000,
+      humidity = 86,
+      dew_point = -0,42
+    },
+    {
+      dt = 1609585200,
+      feels_like = -0,23,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 51,
+      temp = 2,65,
+      wind_speed = 1,26,
+      wind_deg = 49,
+      uvi = 0,27,
+      pressure = 1014,
+      visibility = 10000,
+      humidity = 82,
+      dew_point = -0,3
+    },
+    {
+      dt = 1609588800,
+      feels_like = 0,17,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 57,
+      temp = 3,03,
+      wind_speed = 1,24,
+      wind_deg = 39,
+      uvi = 0,26,
+      pressure = 1014,
+      visibility = 10000,
+      humidity = 80,
+      dew_point = -0,25
+    },
+    {
+      dt = 1609592400,
+      feels_like = 0,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Überwiegend bewölkt",
+          id = 803
+        }
+      },
+      clouds = 84,
+      temp = 3,08,
+      wind_speed = 1,56,
+      wind_deg = 41,
+      uvi = 0,24,
+      pressure = 1014,
+      visibility = 10000,
+      humidity = 80,
+      dew_point = -0,06
+    },
+    {
+      dt = 1609596000,
+      feels_like = -0,28,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 87,
+      temp = 2,77,
+      wind_speed = 1,52,
+      wind_deg = 60,
+      uvi = 0,11,
+      pressure = 1014,
+      visibility = 10000,
+      humidity = 82,
+      dew_point = 0,09
+    },
+    {
+      dt = 1609599600,
+      feels_like = -0,68,
+      pop = 0,
+      weather = {
+        {
+          main = "Clouds",
+          icon = "04d",
+          description = "Bedeckt",
+          id = 804
+        }
+      },
+      clouds = 89,
+      temp = 2,2,
+      wind_speed = 1,27,
+      wind_deg = 65,
+      uvi = 0,
+      pressure = 1015,
+      visibility = 10000,
+      humidity = 85,
+      dew_point = 0,01
+    }
+  },
+  minutely = {
+    {
+      dt = 1609430580,
+      precipitation = 0
+    },
+    {
+      dt = 1609430640,
+      precipitation = 0
+    },
+    {
+      dt = 1609430700,
+      precipitation = 0
+    },
+    {
+      dt = 1609430760,
+      precipitation = 0
+    },
+    {
+      dt = 1609430820,
+      precipitation = 0
+    },
+    {
+      dt = 1609430880,
+      precipitation = 0
+    },
+    {
+      dt = 1609430940,
+      precipitation = 0
+    },
+    {
+      dt = 1609431000,
+      precipitation = 0
+    },
+    {
+      dt = 1609431060,
+      precipitation = 0
+    },
+    {
+      dt = 1609431120,
+      precipitation = 0
+    },
+    {
+      dt = 1609431180,
+      precipitation = 0
+    },
+    {
+      dt = 1609431240,
+      precipitation = 0
+    },
+    {
+      dt = 1609431300,
+      precipitation = 0
+    },
+    {
+      dt = 1609431360,
+      precipitation = 0
+    },
+    {
+      dt = 1609431420,
+      precipitation = 0
+    },
+    {
+      dt = 1609431480,
+      precipitation = 0
+    },
+    {
+      dt = 1609431540,
+      precipitation = 0
+    },
+    {
+      dt = 1609431600,
+      precipitation = 0
+    },
+    {
+      dt = 1609431660,
+      precipitation = 0
+    },
+    {
+      dt = 1609431720,
+      precipitation = 0
+    },
+    {
+      dt = 1609431780,
+      precipitation = 0
+    },
+    {
+      dt = 1609431840,
+      precipitation = 0
+    },
+    {
+      dt = 1609431900,
+      precipitation = 0
+    },
+    {
+      dt = 1609431960,
+      precipitation = 0
+    },
+    {
+      dt = 1609432020,
+      precipitation = 0
+    },
+    {
+      dt = 1609432080,
+      precipitation = 0
+    },
+    {
+      dt = 1609432140,
+      precipitation = 0
+    },
+    {
+      dt = 1609432200,
+      precipitation = 0
+    },
+    {
+      dt = 1609432260,
+      precipitation = 0
+    },
+    {
+      dt = 1609432320,
+      precipitation = 0
+    },
+    {
+      dt = 1609432380,
+      precipitation = 0
+    },
+    {
+      dt = 1609432440,
+      precipitation = 0
+    },
+    {
+      dt = 1609432500,
+      precipitation = 0
+    },
+    {
+      dt = 1609432560,
+      precipitation = 0
+    },
+    {
+      dt = 1609432620,
+      precipitation = 0
+    },
+    {
+      dt = 1609432680,
+      precipitation = 0
+    },
+    {
+      dt = 1609432740,
+      precipitation = 0
+    },
+    {
+      dt = 1609432800,
+      precipitation = 0
+    },
+    {
+      dt = 1609432860,
+      precipitation = 0
+    },
+    {
+      dt = 1609432920,
+      precipitation = 0
+    },
+    {
+      dt = 1609432980,
+      precipitation = 0
+    },
+    {
+      dt = 1609433040,
+      precipitation = 0
+    },
+    {
+      dt = 1609433100,
+      precipitation = 0
+    },
+    {
+      dt = 1609433160,
+      precipitation = 0
+    },
+    {
+      dt = 1609433220,
+      precipitation = 0
+    },
+    {
+      dt = 1609433280,
+      precipitation = 0
+    },
+    {
+      dt = 1609433340,
+      precipitation = 0
+    },
+    {
+      dt = 1609433400,
+      precipitation = 0
+    },
+    {
+      dt = 1609433460,
+      precipitation = 0
+    },
+    {
+      dt = 1609433520,
+      precipitation = 0
+    },
+    {
+      dt = 1609433580,
+      precipitation = 0
+    },
+    {
+      dt = 1609433640,
+      precipitation = 0
+    },
+    {
+      dt = 1609433700,
+      precipitation = 0
+    },
+    {
+      dt = 1609433760,
+      precipitation = 0
+    },
+    {
+      dt = 1609433820,
+      precipitation = 0
+    },
+    {
+      dt = 1609433880,
+      precipitation = 0
+    },
+    {
+      dt = 1609433940,
+      precipitation = 0
+    },
+    {
+      dt = 1609434000,
+      precipitation = 0
+    },
+    {
+      dt = 1609434060,
+      precipitation = 0
+    },
+    {
+      dt = 1609434120,
+      precipitation = 0
+    },
+    {
+      dt = 1609434180,
+      precipitation = 0
+    }
+  },
+  timezone_offset = 3600,
+  timezone = "Europe/Berlin"
+}
