@@ -29,7 +29,7 @@ local weather, weatherimage
 local forecast, forecastimage = {}, {}
 local screensize =  iup.GetGlobal("SCREENSIZE")
 local screensize = "810 x 490"
-local cnt = 1
+local cnt, mcnt = 1, 1200
 local statcount, statscreen
 
 -- List of computers to check
@@ -283,7 +283,7 @@ local function status(check)
 	 title = string.format("-")
       }
    end
-   statcount.title = string.format("%d", cnt % 1200)
+   statcount.title = string.format("%d", mcnt)
    sstat = isScreenOn()
    if sstat == true then
       statscreen.title = "on"
@@ -466,6 +466,7 @@ local timer = iup.timer{
       -- 600 second interval - 10  minutes
       if cnt % (1200) == 12 then
 	 wetter(true)
+	 mcnt = 1200
       end
       -- 1 second interval
       if cnt % 2 == 0 then
@@ -476,6 +477,7 @@ local timer = iup.timer{
       kalender(true)
       status(true)
       cnt = cnt + 1
+      mcnt = mcnt - 1
       sbutton.title = checkOnOff(t)
    end
 }
