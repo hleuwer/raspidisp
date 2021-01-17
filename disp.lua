@@ -436,8 +436,10 @@ local dlg = iup.dialog {
 	       action = function(self)
 		  if scstate == "on" then
 		     screenOn(false)
+		     self.title = "Hell"
 		  else
 		     screenOn(true)
+		     self.title = "Dunkel"
 		  end
 	       end
 	    },
