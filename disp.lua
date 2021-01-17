@@ -80,6 +80,8 @@ for i,v in ipairs(weatherImageNames) do
 end
 
 local luaicon = iup.LoadImage("/usr/local/share/luanagios/img/luanagios.png")
+
+local screenButton
 --------------------------------------------------------------------------------
 -- Computer status evaluation and display.
 -- @param index Index to retrieve computer info: display and hostname
@@ -144,14 +146,21 @@ local function uhrzeit(check)
    return clock
 end
 
+
+--------------------------------------------------------------------------------
+-- Get weather forecast data
+-- @return table with weather forecast data
+--------------------------------------------------------------------------------
 local function foo()
    return io.popen("check_weather -l 'Gross Kummerfeld' -L de -m forecast -P `cat ~/.appid` -t"):read("*a")
 end
+
 --------------------------------------------------------------------------------
 -- Weather status evaluation and display.
 -- @param check Control what to do:
 --              flase - generate diag elements
 --              true  - check status and display result
+--------------------------------------------------------------------------------
 local function wetter(check)
    local stat, s, t
    if check == true then
@@ -203,22 +212,14 @@ local function wetter(check)
 	 forecastcont[i] = iup.hbox{
 	    gap=5,
 	    normalizesize="VERTICAL",
---	    iup.flatframe{
---	       bgcolor = "150 150 150",
---	       frame = no,
-	       forecastimage[i],
---	 },
-	       forecast[i]
+	    forecastimage[i],
+	    forecast[i]
 	 }
       end
       return
 	 iup.hbox{
 	    gap=5, normalizesize="VERTICAL",
---	    iup.flatframe{
---	       bgcolor = "150 150 150",
---	       frame = no,
-	       weatherimage,
---	    },
+	    weatherimage,
 	    weather
 	 },
 	 iup.vbox{
@@ -258,14 +259,29 @@ local function screenOn(v)
 	 os.execute("/usr/local/sbin/screen-on")
       until isScreenOn() == true 
       scstate = "on"
+      screenButton.title = "Dunkel"
    else
       repeat
 	 os.execute("/usr/local/sbin/screen-off")
       until isScreenOn() == false
       scstate = "off"
+      screenButton.title = "Hell"
    end
    return scstate
 end
+
+-- Button to turn screen backlight on or off
+screenButton = iup.button{
+   title = "Dunkel",
+   expand = horizontal,
+   action = function(self)
+      if scstate == "on" then
+	 screenOn(false)
+      else
+	 screenOn(true)
+      end
+   end
+}
 
 --------------------------------------------------------------------------------
 -- Couonter status (just temporary help  - should vanish)
@@ -300,11 +316,11 @@ end
 --------------------------------------------------------------------------------
 local function checkOnOff(now)
    if scstate == "on" then
-      if now.hour == onoff.off.hour and (now.min >= onoff.off.min and now.min < onoff.off.min + 10) then
+      if now.hour == onoff.off.hour and now.min == onoff.off.min then
 	 screenOn(false)
       end
    elseif scstate == "off" then
-      if now.hour == onoff.on.hour and  (now.min >= onoff.on.min and now.min < onoff.on.min + 10) then
+      if now.hour == onoff.on.hour and  now.min == onoff.on.min then
 	 screenOn(true)
       end
    elseif scstate == "unknown" then
@@ -379,6 +395,7 @@ local function icon(which)
    end
 end
 
+
 -------------------------------------------------------------------------------
 -- This is the main dialog
 -------------------------------------------------------------------------------
@@ -430,19 +447,7 @@ local dlg = iup.dialog {
       iup.hbox {
 	 gap = HGAP,
 	 iup.hbox {
-	    iup.button{
-	       title = "Dunkel",
-	       expand = horizontal,
-	       action = function(self)
-		  if scstate == "on" then
-		     screenOn(false)
-		     self.title = "Hell"
-		  else
-		     screenOn(true)
-		     self.title = "Dunkel"
-		  end
-	       end
-	    },
+	    screenButton,
 	    status(false),
 	    iup.button{
 	       title = "Schließen",
