@@ -30,7 +30,7 @@ local forecast, forecastimage = {}, {}
 local screensize =  iup.GetGlobal("SCREENSIZE")
 local screensize = "810 x 490"
 local cnt = 1
-local stat
+local statcount, statscreen
 
 -- List of computers to check
 local computers = {
@@ -49,12 +49,33 @@ local weatherImageNames = {
 "01n", "02n", "03n", "04n", "09n", "10n", "11n", "13n", "50n",
 }
 
+local weatherImageFiles = {
+   ["01d"] = "day_clear.png",
+   ["01n"] = "night_clear.png",
+   ["02d"] = "day_partial_cloud.png",
+   ["02n"] = "night_partial_cloud.png",
+   ["03d"] = "cloudy.png",
+   ["03n"] = "cloudy.png",
+   ["04d"] = "overcast.png",
+   ["04n"] = "overcast.png",
+   ["09d"] = "rain.png",
+   ["09n"] = "rain.png",
+   ["10d"] = "day_rain.png",
+   ["10n"] = "night_rain.png",
+   ["11d"] = "thunder.png",
+   ["11n"] = "thunder.png",
+   ["13d"] = "snow.png",
+   ["13n"] = "snow.png",
+   ["50d"] = "mist.png",
+   ["50n"] = "mist.png",
+   
+}
 local weatherImages, forecastImages = {}, {}
 
 for i,v in ipairs(weatherImageNames) do
-   weatherImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/"..v.."@2x.png")
+   weatherImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/PNG/"..weatherImageFiles[v])
    weatherImages[v].resize = "40x40"
-   forecastImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/"..v.."@2x.png")
+   forecastImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/PNG/"..weatherImageFiles[v])
    forecastImages[v].resize = "32x32"
 end
 
@@ -70,10 +91,10 @@ local luaicon = iup.LoadImage("/usr/local/share/luanagios/img/luanagios.png")
 local function rechner(index, check)
    local title, s
    if check == true then
-      s = io.popen("check_host -H " ..
-		   computers[index].hname ..
-		   " -m uptime | cut -d ' ' -f 1"):read("*a")
-      if string.sub(s, 1,2) ~= "OK" then
+      local res, _, n = os.execute("ping -c 1 -W 1 "..computers[index].hname)
+      if res == true and n == 0 then
+	 s = "OK"
+      else
 	 s = "--"
       end
    else
@@ -123,28 +144,35 @@ local function uhrzeit(check)
    return clock
 end
 
+local function foo()
+   return io.popen("check_weather -l 'Gross Kummerfeld' -L de -m forecast -P `cat ~/.appid` -t"):read("*a")
+end
 --------------------------------------------------------------------------------
 -- Weather status evaluation and display.
 -- @param check Control what to do:
 --              flase - generate diag elements
 --              true  - check status and display result
 local function wetter(check)
+   local stat, s, t
    if check == true then
-      local s = io.popen("check_weather -l 'Gross Kummerfeld' -L de -m forecast -P `cat ~/.appid` -t"):read("*a")
-      local f = load(s)
-      local t
-      if f ~= nil then
-	 t = f()
+      stat, s = pcall(foo)
+      if stat == true then
+	 local f = load(s)
+	 if f ~= nil then
+	    t = f()
+	 else
+	    t = nil
+	 end
       end
       if t ~= nil then
-	 weather.title = string.format("%+3.1f °C - %d %% - %s",
+	 weather.title = string.format("  %+3.1f °C - %d %% - %s",
 				       t.current.temp, t.current.humidity,
 				       t.current.weather[1].description)
 	 weatherimage.image = weatherImages[t.current.weather[1].icon]
 --	 print("#1#", t.current.weather[1].icon, weatherImages[t.current.weather[1].icon])
 	 local rt = {}
 	 for k, u in ipairs(t.daily) do
-	    forecast[k].title = string.format("%s: %+3.1f °C %5s %5s %s",
+	    forecast[k].title = string.format("   %s: %+3.1f °C %5s %5s %s",
 					os.date("%d.%m", u.dt),
 					u.temp.day,
 					os.date("%H:%M", u.sunrise),
@@ -156,7 +184,7 @@ local function wetter(check)
       end
    else
       weather = iup.label{
-	 font = "Courier New, Bold 18",
+	 font = "Courier New, Bold 16",
 	 title = "wait ...",
       }
       
@@ -172,10 +200,71 @@ local function wetter(check)
 	 forecastimage[i] = iup.label{
 	    image = forecastImages["50d"],
 	 }
-	 forecastcont[i] = iup.hbox{gap=5, normalizesize="VERTICAL", forecastimage[i], forecast[i]}
+	 forecastcont[i] = iup.hbox{
+	    gap=5,
+	    normalizesize="VERTICAL",
+--	    iup.flatframe{
+--	       bgcolor = "150 150 150",
+--	       frame = no,
+	       forecastimage[i],
+--	 },
+	       forecast[i]
+	 }
       end
-      return iup.hbox{gap=5, normalizesize="VERTICAL", weatherimage, weather}, iup.vbox{gap=-3, table.unpack(forecastcont)}
+      return
+	 iup.hbox{
+	    gap=5, normalizesize="VERTICAL",
+--	    iup.flatframe{
+--	       bgcolor = "150 150 150",
+--	       frame = no,
+	       weatherimage,
+--	    },
+	    weather
+	 },
+	 iup.vbox{
+	    gap=-3,
+	    table.unpack(forecastcont)
+	 }
    end
+end
+
+--------------------------------------------------------------------------------
+-- Check screen status
+-- @return true: screen is on, false: screen is off
+--------------------------------------------------------------------------------
+local function isScreenOn()
+   local fd
+   repeat
+      fd =  io.popen("/usr/local/sbin/screen-show")
+   until fd ~= nil
+   repeat
+      s = fd:read()
+   until s ~= nil
+   if s == "0" then
+      return true
+   else
+      return false
+   end
+end
+
+--------------------------------------------------------------------------------
+-- Turn screen on or off and update state.
+-- @param v  New state: true=on, false=off
+-- @return state of screen "on"/"off"
+--------------------------------------------------------------------------------
+local function screenOn(v)
+   if v == true then
+      repeat
+	 os.execute("/usr/local/sbin/screen-on")
+      until isScreenOn() == true 
+      scstate = "on"
+   else
+      repeat
+	 os.execute("/usr/local/sbin/screen-off")
+      until isScreenOn() == false
+      scstate = "off"
+   end
+   return scstate
 end
 
 --------------------------------------------------------------------------------
@@ -195,8 +284,8 @@ local function status(check)
       }
    end
    statcount.title = string.format("%d", cnt % 1200)
-   local sstat =  io.popen("/usr/local/sbin/screen-show"):read()
-   if sstat == "0" then
+   sstat = isScreenOn()
+   if sstat == true then
       statscreen.title = "on"
    else
       statscreen.title = "off"
@@ -211,23 +300,21 @@ end
 --------------------------------------------------------------------------------
 local function checkOnOff(now)
    if scstate == "on" then
-      if now.hour == onoff.off.hour and now.min == onoff.off.min then
-	 io.popen("/usr/local/sbin/screen-off"):read()
-         scstate = "off"
+      if now.hour == onoff.off.hour and (now.min >= onoff.off.min and now.min < onoff.off.min + 10) then
+	 screenOn(false)
       end
    elseif scstate == "off" then
-      if now.hour == onoff.on.hour and  now.min == onoff.on.min then
-	 io.popen("/usr/local/sbin/screen-on"):read()
-         scstate = "on"
+      if now.hour == onoff.on.hour and  (now.min >= onoff.on.min and now.min < onoff.on.min + 10) then
+	 screenOn(true)
       end
    elseif scstate == "unknown" then
       local on_mins = onoff.on.hour * 60 + onoff.on.min
       local off_mins = onoff.off.hour * 60 + onoff.off.min
       local now_mins = now.hour * 60 + now.min
       if now_mins >= on_mins and now_mins < off_mins then
-         scstate = "on"
+	 screenOn(true)
       else
-         scstate = "off"
+	 screenOn(false)
       end
    end
    return scstate
@@ -315,7 +402,7 @@ local dlg = iup.dialog {
 		  title = "  "
 		  --title = "RECHNER:"
 	       },
---	       sbutton,
+	       sbutton,
 	       normalizesize = "VERTICAL"
 	    },
 	    rechner(1, false),
@@ -347,7 +434,11 @@ local dlg = iup.dialog {
 	       title = "Dunkel",
 	       expand = horizontal,
 	       action = function(self)
-		  os.execute("/usr/local/sbin/screen-off")
+		  if scstate == "on" then
+		     screenOn(false)
+		  else
+		     screenOn(true)
+		  end
 	       end
 	    },
 	    status(false),
