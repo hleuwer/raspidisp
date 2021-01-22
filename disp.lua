@@ -25,12 +25,13 @@ local onoff = {
 local screenOn = true
 local clock
 local date
+local cal
 local weather, weatherimage
 local forecast, forecastimage = {}, {}
 local screensize =  iup.GetGlobal("SCREENSIZE")
 local screensize = "810 x 490"
 local cnt, mcnt = 1, 1200
-local statcount, statscreen
+local statcount, statscreen, statgc
 
 -- List of computers to check
 local computers = {
@@ -91,7 +92,7 @@ local screenButton
 -- @return IUP element showing the computer status
 --------------------------------------------------------------------------------
 local function rechner(index, check)
-   local title, s
+   local s
    if check == true then
       local res, _, n = os.execute("ping -c 1 -W 1 "..computers[index].hname)
       if res == true and n == 0 then
@@ -99,14 +100,16 @@ local function rechner(index, check)
       else
 	 s = "--"
       end
+      computers[index].label.title = computers[index].dname .. s
+      return true
    else
       s = "--"
       computers[index].label = iup.flatlabel{
 	 font = "Courier New, Bold 18",
+	 title = computers[index].dname .. s
       }
+      return computers[index].label
    end
-   computers[index].label.title = computers[index].dname .. s
-   return computers[index].label
 end
 
 --------------------------------------------------------------------------------
@@ -121,10 +124,15 @@ local function datum(check)
    if check == false then
       date = iup.label{
 	 font = "Arial, Bold 36",
+	 title = string.format("%s, %02d.%02d.%04d",
+			       wdays[t.wday], t.day, t.month, t.year)
       }
+      return date
+   else
+      date.title = string.format("%s, %02d.%02d.%04d",
+				 wdays[t.wday], t.day, t.month, t.year)
+      return true
    end
-   date.title = string.format("%s, %02d.%02d.%04d", wdays[t.wday], t.day, t.month, t.year)
-   return date
 end
 
 --------------------------------------------------------------------------------
@@ -141,9 +149,11 @@ local function uhrzeit(check)
 	 font = "Arial, Bold 48",
 	 title = string.format("%02d:%02d:%02d", t.hour, t.min, t.sec)
       }
+      return clock
+   else
+      clock.title = string.format("%02d:%02d:%02d", t.hour, t.min, t.sec)
+      return true
    end
-   clock.title = string.format("%02d:%02d:%02d", t.hour, t.min, t.sec)
-   return clock
 end
 
 
@@ -179,7 +189,6 @@ local function wetter(check)
 				       t.current.weather[1].description)
 	 weatherimage.image = weatherImages[t.current.weather[1].icon]
 --	 print("#1#", t.current.weather[1].icon, weatherImages[t.current.weather[1].icon])
-	 local rt = {}
 	 for k, u in ipairs(t.daily) do
 	    forecast[k].title = string.format("   %s: %+3.1f °C %5s %5s %s",
 					os.date("%d.%m", u.dt),
@@ -191,6 +200,7 @@ local function wetter(check)
 --	    print("#2#", u.weather[1].icon, forecastImages[u.weather[1].icon])
 	 end
       end
+      return true
    else
       weather = iup.label{
 	 font = "Courier New, Bold 16",
@@ -234,7 +244,7 @@ end
 -- @return true: screen is on, false: screen is off
 --------------------------------------------------------------------------------
 local function isScreenOn()
-   local fd
+   local fd, s
    repeat
       fd =  io.popen("/usr/local/sbin/screen-show")
    until fd ~= nil
@@ -291,22 +301,29 @@ screenButton = iup.button{
 -- @return IUP element.
 --------------------------------------------------------------------------------
 local function status(check)
+   local sstat
    if check == false then
       statcount = iup.label{
 	 title = string.format("%d", 0)
       }
       statscreen = iup.label{
-	 title = string.format("-")
+	 title = "-"
       }
-   end
-   statcount.title = string.format("%d", mcnt)
-   sstat = isScreenOn()
-   if sstat == true then
-      statscreen.title = "on"
+      statgc = iup.label{
+	 title = "-"
+      }
+      return iup.hbox{statscreen, statcount, statgc}
    else
-      statscreen.title = "off"
+      statcount.title = string.format("%d", mcnt)
+      sstat = isScreenOn()
+      statgc.title = string.format("%d", collectgarbage("count"))
+      if sstat == true then
+	 statscreen.title = "on"
+      else
+	 statscreen.title = "off"
+      end
+      return true
    end
-   return iup.hbox{statscreen, statcount}
 end
 
 --------------------------------------------------------------------------------
@@ -351,14 +368,15 @@ local sbutton = iup.button{
 local function kalender(check)
    if check == true then
       cal.value = "TODAY"
+      return true
    else
       cal = iup.calendar{
 	 weeknumbers = yes,
 	 font = "Courier, Bold 12",
 	 value = "TODAY"
       }
+      return cal
    end
-   return cal
 end
 
 -------------------------------------------------------------------------------
@@ -458,9 +476,13 @@ local dlg = iup.dialog {
       }
    }
 }
-
+local logfile = assert(io.open("/tmp/disp.log", "a+"))
+logfile:write("=== log started" .. os.date() .. "\n")
 dlg:show()
-
+local t1, t2, dt, dtmax, dtmaxlast = 0, 0, 0, -1, 0
+local dtmaxlast = 0
+--collectgarbage("setstepmul", 300)
+--collectgarbage("setpause", 100)
 local timer = iup.timer{
    time = 500,
    action_cb = function(self)
@@ -477,6 +499,7 @@ local timer = iup.timer{
       end
       -- 1 second interval
       if cnt % 2 == 0 then
+	 collectgarbage("collect")
       end
       local t = os.date("*t")
       uhrzeit(true)
@@ -485,6 +508,20 @@ local timer = iup.timer{
       status(true)
       cnt = cnt + 1
       mcnt = mcnt - 1
+      t2 = self.elapsedtime
+      dt = (t2 - t1)/1000
+      t1 = t2
+      if dt > dtmax then dtmax = dt end
+--      print("dt=", dt, dtmax, collectgarbage("count"))
+      if dtmax ~= dtmaxlast then
+	 logfile:write(string.format("dt=%.3f dtmax=%.3f gc=%d  at %s\n",
+				     dt, dtmax, 
+				     collectgarbage("count"), os.date()))
+      end
+      dtmaxlast = dtmax
+      if dt > 5 then
+	 iup.Message("Attention", string.format("Missed a time tick: dt=%.1f at %.1f", dt, t2/1000))
+      end
       sbutton.title = checkOnOff(t)
    end
 }
