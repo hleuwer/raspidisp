@@ -1,5 +1,6 @@
 local iup = require "iuplua"
 require "iupluaim"
+local snmp = require "snmp"
 local pretty = require "pl.pretty"
 
 -- Couple of constants and adjustments
@@ -32,6 +33,8 @@ local screensize =  iup.GetGlobal("SCREENSIZE")
 local screensize = "810 x 490"
 local cnt, mcnt = 1, 1200
 local statcount, statscreen, statgc
+local tempsens = {}
+
 
 -- List of computers to check
 local computers = {
@@ -73,6 +76,8 @@ local weatherImageFiles = {
 }
 local weatherImages, forecastImages = {}, {}
 
+local tempsess = snmp.open{peer="raspberrypi4"}
+
 for i,v in ipairs(weatherImageNames) do
    weatherImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/PNG/"..weatherImageFiles[v])
    weatherImages[v].resize = "40x40"
@@ -105,7 +110,7 @@ local function rechner(index, check)
    else
       s = "--"
       computers[index].label = iup.flatlabel{
-	 font = "Courier New, Bold 18",
+	 font = "Courier New, 16",
 	 title = computers[index].dname .. s
       }
       return computers[index].label
@@ -156,6 +161,22 @@ local function uhrzeit(check)
    end
 end
 
+--------------------------------------------------------------------------------
+-- Temperature sensors
+--------------------------------------------------------------------------------
+local function tempsensor(index, check)
+   if check == false then
+      tempsens[index] = iup.label{
+	    font = "Arial, Bold 12",
+	    title = string.format("Temp %d: ---.- °C", index)
+	 }
+      return tempsens[index]
+   else
+      local temp = tonumber(tempsess["extOutput_"..index])
+      tempsens[index].title = string.format("Temp %d: %5.1f °C", index, temp)
+      return true
+   end
+end
 
 --------------------------------------------------------------------------------
 -- Get weather forecast data
@@ -203,7 +224,7 @@ local function wetter(check)
       return true
    else
       weather = iup.label{
-	 font = "Courier New, Bold 16",
+	 font = "Courier New, Bold 14",
 	 title = "wait ...",
       }
       
@@ -283,6 +304,7 @@ end
 -- Button to turn screen backlight on or off
 screenButton = iup.button{
    title = "Dunkel",
+   font = "Arial, 12",
    expand = horizontal,
    action = function(self)
       if scstate == "on" then
@@ -304,21 +326,24 @@ local function status(check)
    local sstat
    if check == false then
       statcount = iup.label{
-	 title = string.format("%d", 0)
+	 font = "Arial, 10",
+	 title = string.format("%5d", 0)
       }
       statscreen = iup.label{
-	 title = "-"
+	 font = "Arial, 10",
+	 title = "---"
       }
       statgc = iup.label{
-	 title = "-"
+	 font = "Arial, 10",
+	 title = "---- kB"
       }
       return iup.hbox{statscreen, statcount, statgc}
    else
-      statcount.title = string.format("%d", mcnt)
+      statcount.title = string.format("%5d", mcnt)
       sstat = isScreenOn()
-      statgc.title = string.format("%d", collectgarbage("count"))
+      statgc.title = string.format("%4d kB", collectgarbage("count"))
       if sstat == true then
-	 statscreen.title = "on"
+	 statscreen.title = " on"
       else
 	 statscreen.title = "off"
       end
@@ -454,7 +479,14 @@ local dlg = iup.dialog {
 	 iup.vbox {
 	    gap = 10,
 	    datum(false),
-	    uhrzeit(false),
+	    iup.hbox {
+	       uhrzeit(false),
+	       iup.vbox {
+		  tempsensor(2, false),
+		  tempsensor(3, false),
+		  tempsensor(4, false)
+	       }
+	    },
 	    wetter(false)
 	 },
       },
@@ -469,6 +501,7 @@ local dlg = iup.dialog {
 	    status(false),
 	    iup.button{
 	       title = "Schließen",
+	       font = "Arial, 12",
 	       expand = horizontal,
 	       action = function(self) os.exit(0) end
 	    }
@@ -501,6 +534,10 @@ local timer = iup.timer{
       if cnt % 2 == 0 then
 	 collectgarbage("collect")
       end
+      if cnt % 60 == 5 then tempsensor(2, true) end
+      if cnt % 60 == 7 then tempsensor(3, true) end
+      if cnt % 60 == 9 then tempsensor(4, true) end
+      
       local t = os.date("*t")
       uhrzeit(true)
       datum(true)
