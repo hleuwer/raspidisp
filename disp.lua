@@ -3,7 +3,8 @@ require "iupluaim"
 local snmp = require "snmp"
 local pretty = require "pl.pretty"
 
--- Couple of constants and adjustments
+-- Couple of generic constants and adjustments
+local format = string.format
 local yes, no = "YES", "NO"
 local vertical, horizontal = "VERTICAL", "HORIZONTAL"
 local HGAP, VGAP = 20, 5
@@ -34,7 +35,10 @@ local screensize = "810 x 490"
 local cnt, mcnt = 1, 1200
 local statcount, statscreen, statgc
 local tempsens = {}
-
+local logfile = assert(io.open("/tmp/disp.log", "a+"))
+logfile:write("=== log started" .. os.date() .. "\n")
+local t1, t2, dt, dtmax, dtmaxlast = 0, 0, 0, -1, 0
+local dtmaxlast = 0
 
 -- List of computers to check
 local computers = {
@@ -87,7 +91,12 @@ end
 
 local luaicon = iup.LoadImage("/usr/local/share/luanagios/img/luanagios.png")
 
-local screenButton
+
+local sbutton = iup.button{
+   title = scstate,
+   action = function(self) os.exit(0) end
+}
+
 --------------------------------------------------------------------------------
 -- Computer status evaluation and display.
 -- @param index Index to retrieve computer info: display and hostname
@@ -129,12 +138,12 @@ local function datum(check)
    if check == false then
       date = iup.label{
 	 font = "Arial, Bold 36",
-	 title = string.format("%s, %02d.%02d.%04d",
+	 title = format("%s, %02d.%02d.%04d",
 			       wdays[t.wday], t.day, t.month, t.year)
       }
       return date
    else
-      date.title = string.format("%s, %02d.%02d.%04d",
+      date.title = format("%s, %02d.%02d.%04d",
 				 wdays[t.wday], t.day, t.month, t.year)
       return true
    end
@@ -152,11 +161,11 @@ local function uhrzeit(check)
    if check == false then
       clock = iup.label{
 	 font = "Arial, Bold 48",
-	 title = string.format("%02d:%02d:%02d", t.hour, t.min, t.sec)
+	 title = format("%02d:%02d:%02d", t.hour, t.min, t.sec)
       }
       return clock
    else
-      clock.title = string.format("%02d:%02d:%02d", t.hour, t.min, t.sec)
+      clock.title = format("%02d:%02d:%02d", t.hour, t.min, t.sec)
       return true
    end
 end
@@ -168,12 +177,12 @@ local function tempsensor(index, check)
    if check == false then
       tempsens[index] = iup.label{
 	    font = "Arial, Bold 12",
-	    title = string.format("Temp %d: ---.- °C", index)
+	    title = format("Temp %d: ---.- °C", index)
 	 }
       return tempsens[index]
    else
       local temp = tonumber(tempsess["extOutput_"..index])
-      tempsens[index].title = string.format("Temp %d: %5.1f °C", index, temp)
+      tempsens[index].title = format("Temp %d: %5.1f °C", index, temp)
       return true
    end
 end
@@ -182,7 +191,7 @@ end
 -- Get weather forecast data
 -- @return table with weather forecast data
 --------------------------------------------------------------------------------
-local function foo()
+local function getWeather()
    return io.popen("check_weather -l 'Gross Kummerfeld' -L de -m forecast -P `cat ~/.appid` -t"):read("*a")
 end
 
@@ -195,7 +204,7 @@ end
 local function wetter(check)
    local stat, s, t
    if check == true then
-      stat, s = pcall(foo)
+      stat, s = pcall(getWeather)
       if stat == true then
 	 local f = load(s)
 	 if f ~= nil then
@@ -205,13 +214,13 @@ local function wetter(check)
 	 end
       end
       if t ~= nil then
-	 weather.title = string.format("  %+3.1f °C - %d %% - %s",
+	 weather.title = format("  %+3.1f °C - %d %% - %s",
 				       t.current.temp, t.current.humidity,
 				       t.current.weather[1].description)
 	 weatherimage.image = weatherImages[t.current.weather[1].icon]
 --	 print("#1#", t.current.weather[1].icon, weatherImages[t.current.weather[1].icon])
 	 for k, u in ipairs(t.daily) do
-	    forecast[k].title = string.format("   %s: %+3.1f °C %5s %5s %s",
+	    forecast[k].title = format("   %s: %+3.1f °C %5s %5s %s",
 					os.date("%d.%m", u.dt),
 					u.temp.day,
 					os.date("%H:%M", u.sunrise),
@@ -281,36 +290,37 @@ end
 
 --------------------------------------------------------------------------------
 -- Turn screen on or off and update state.
+-- @param button  Button to update title.
 -- @param v  New state: true=on, false=off
 -- @return state of screen "on"/"off"
 --------------------------------------------------------------------------------
-local function screenOn(v)
+local function screenOn(button, v)
    if v == true then
       repeat
 	 os.execute("/usr/local/sbin/screen-on")
       until isScreenOn() == true 
       scstate = "on"
-      screenButton.title = "Dunkel"
+      button.title = "Dunkel"
    else
       repeat
 	 os.execute("/usr/local/sbin/screen-off")
       until isScreenOn() == false
       scstate = "off"
-      screenButton.title = "Hell"
+      button.title = "Hell"
    end
    return scstate
 end
 
 -- Button to turn screen backlight on or off
-screenButton = iup.button{
+local screenButton = iup.button{
    title = "Dunkel",
    font = "Arial, 12",
    expand = horizontal,
    action = function(self)
       if scstate == "on" then
-	 screenOn(false)
+	 screenOn(self, false)
       else
-	 screenOn(true)
+	 screenOn(self, true)
       end
    end
 }
@@ -327,7 +337,7 @@ local function status(check)
    if check == false then
       statcount = iup.label{
 	 font = "Arial, 10",
-	 title = string.format("%5d", 0)
+	 title = format("%5d", 0)
       }
       statscreen = iup.label{
 	 font = "Arial, 10",
@@ -339,9 +349,9 @@ local function status(check)
       }
       return iup.hbox{statscreen, statcount, statgc}
    else
-      statcount.title = string.format("%5d", mcnt)
+      statcount.title = format("%5d", mcnt)
       sstat = isScreenOn()
-      statgc.title = string.format("%4d kB", collectgarbage("count"))
+      statgc.title = format("%4d kB", collectgarbage("count"))
       if sstat == true then
 	 statscreen.title = " on"
       else
@@ -356,32 +366,27 @@ end
 -- @param now current time
 -- @return screen state
 --------------------------------------------------------------------------------
-local function checkOnOff(now)
+local function checkOnOff(button, now)
    if scstate == "on" then
       if now.hour == onoff.off.hour and now.min == onoff.off.min then
-	 screenOn(false)
+	 screenOn(button, false)
       end
    elseif scstate == "off" then
       if now.hour == onoff.on.hour and  now.min == onoff.on.min then
-	 screenOn(true)
+	 screenOn(button, true)
       end
    elseif scstate == "unknown" then
       local on_mins = onoff.on.hour * 60 + onoff.on.min
       local off_mins = onoff.off.hour * 60 + onoff.off.min
       local now_mins = now.hour * 60 + now.min
       if now_mins >= on_mins and now_mins < off_mins then
-	 screenOn(true)
+	 screenOn(button, true)
       else
-	 screenOn(false)
+	 screenOn(button, false)
       end
    end
    return scstate
 end
-
-local sbutton = iup.button{
-   title = scstate,
-   action = function(self) os.exit(0) end
-}
 
 -------------------------------------------------------------------------------
 -- Calendar.
@@ -437,7 +442,6 @@ local function icon(which)
 	 }
    end
 end
-
 
 -------------------------------------------------------------------------------
 -- This is the main dialog
@@ -509,13 +513,13 @@ local dlg = iup.dialog {
       }
    }
 }
-local logfile = assert(io.open("/tmp/disp.log", "a+"))
-logfile:write("=== log started" .. os.date() .. "\n")
+
+-- show the dialog
 dlg:show()
-local t1, t2, dt, dtmax, dtmaxlast = 0, 0, 0, -1, 0
-local dtmaxlast = 0
---collectgarbage("setstepmul", 300)
---collectgarbage("setpause", 100)
+
+-------------------------------------------------------------------------------
+-- Timer for triggering the updates.
+-------------------------------------------------------------------------------
 local timer = iup.timer{
    time = 500,
    action_cb = function(self)
@@ -534,6 +538,7 @@ local timer = iup.timer{
       if cnt % 2 == 0 then
 	 collectgarbage("collect")
       end
+      -- 30 seconds update temperatures
       if cnt % 60 == 5 then tempsensor(2, true) end
       if cnt % 60 == 7 then tempsensor(3, true) end
       if cnt % 60 == 9 then tempsensor(4, true) end
@@ -544,22 +549,22 @@ local timer = iup.timer{
       kalender(true)
       status(true)
       cnt = cnt + 1
+      -- we display this counter in the status line
       mcnt = mcnt - 1
+      
+      -- track for missed triggers: we log every period that exceeds the last one
       t2 = self.elapsedtime
       dt = (t2 - t1)/1000
       t1 = t2
       if dt > dtmax then dtmax = dt end
---      print("dt=", dt, dtmax, collectgarbage("count"))
       if dtmax ~= dtmaxlast then
-	 logfile:write(string.format("dt=%.3f dtmax=%.3f gc=%d  at %s\n",
+	 logfile:write(format("dt=%.3f dtmax=%.3f gc=%d  at %s\n",
 				     dt, dtmax, 
 				     collectgarbage("count"), os.date()))
       end
       dtmaxlast = dtmax
-      if dt > 5 then
-	 iup.Message("Attention", string.format("Missed a time tick: dt=%.1f at %.1f", dt, t2/1000))
-      end
-      sbutton.title = checkOnOff(t)
+      -- update status
+      sbutton.title = checkOnOff(screenButton, t)
    end
 }
 
