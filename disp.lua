@@ -39,6 +39,7 @@ local logfile = assert(io.open("/tmp/disp.log", "a+"))
 logfile:write("=== log started" .. os.date() .. "\n")
 local t1, t2, dt, dtmax, dtmaxlast = 0, 0, 0, -1, 0
 local dtmaxlast = 0
+local cam
 
 -- List of computers to check
 local computers = {
@@ -91,11 +92,28 @@ end
 
 local luaicon = iup.LoadImage("/usr/local/share/luanagios/img/luanagios.png")
 
-
 local sbutton = iup.button{
    title = scstate,
    action = function(self) os.exit(0) end
 }
+
+local imgold
+--------------------------------------------------------------------------------
+-- Read webcam image
+-- @return iup image object
+--------------------------------------------------------------------------------
+function getWebcamImage()
+   local wwidth = 220
+   local img = iup.LoadImage("/mnt/pi4disk/dev/shm/mjpeg/cam.jpg")
+--   print("#1#", img, imgold)
+   if img then
+      img.resize = tostring(wwidth).."x"..tostring(wwidth*3/4)
+      imgold = img
+      return img
+   else
+      return imgold
+   end
+end
 
 --------------------------------------------------------------------------------
 -- Computer status evaluation and display.
@@ -403,9 +421,29 @@ local function kalender(check)
       cal = iup.calendar{
 	 weeknumbers = yes,
 	 font = "Courier, Bold 12",
-	 value = "TODAY"
+	 value = "TODAY",
+	 bgcolor = "50 50 50"
       }
       return cal
+   end
+end
+
+-------------------------------------------------------------------------------
+-- Webcam picture.
+-- @param check control what do do
+--              false - generate diag elements
+--              true  - read new image
+-- @return IUP element
+-------------------------------------------------------------------------------
+local function webcam(check)
+   if check == true then
+      cam.image = getWebcamImage()
+   else
+      cam = iup.label{
+	 image = getWebcamImage(),
+	 alignment = "ARIGHT:ABOTTOM"
+      }
+      return cam
    end
 end
 
@@ -415,8 +453,53 @@ end
 -- @return flatfram with selected icon embedded.
 -------------------------------------------------------------------------------
 local function icon(which)
+   icontab = iup.tabs{
+      alignment = "CENTER",
+      bgcolor = "52 57 59",
+      font = "Arial, 12",
+      iup.flatframe{
+	 marginleft = 5,
+	 margintop = 5,
+	 kalender(false),
+	 frame = no,
+      },
+--      iup.flatframe{
+--	 bgcolor = "132 132 132",
+--	 iup.label{
+--	    image = luaicon,
+--	 }
+--      },
+      iup.flatframe{
+	 webcam(false),
+	 marginleft = 5,
+	 margintop = 5,
+	 frame = no,
+      },
+      tabtitle0 = "Kalender",
+--      tabtitle1 = "Icon",
+      tabtitle1 = " Kamera ",
+--      tabtype = "BOTTOM",
+--      taborientation = "VERTICAL"
+   }
+   if which == "cal" then
+      icontab.valuepos = 0
+--   elseif which == "lua" then
+--      icontab.valuepos = 1
+   else
+      icontab.valuepos = 1
+   end
+   return icontab
+end
+
+-------------------------------------------------------------------------------
+-- Create  Icon in upper left corner
+-- @param which  "cal" for calendar, "lua" for Luanagios icon
+-- @return flatfram with selected icon embedded.
+-------------------------------------------------------------------------------
+local function __icon(which)
    which = which or "cal"
    if which == "cal" then
+      icontype = which
       return
 	 iup.flatframe{
 	    marginleft = 5,
@@ -440,6 +523,16 @@ local function icon(which)
 	    size = "x10",
 	    expand = no
 	 }
+   elseif which == "cam" then
+      return
+	 iup.flatframe{
+	    webcam(false)
+	 },
+	 iup.space{
+	    size = "x10",
+	    expand = no
+	 }
+	 
    end
 end
 
@@ -459,16 +552,19 @@ local dlg = iup.dialog {
 	 gap = HGAP,
 	 iup.vbox {
 	    gap = 3,
-	    icon("cal"),
+	    --	    icon("cal"),
+	    icon("cam"),
+--[[
 	    iup.hbox {
 	       iup.label{
 		  font = "Arial, Bold 18",
 		  title = "  "
 		  --title = "RECHNER:"
 	       },
-	       sbutton,
+--	       sbutton,
 	       normalizesize = "VERTICAL"
 	    },
+]]
 	    rechner(1, false),
 	    rechner(2, false),
 	    rechner(3, false),
@@ -546,7 +642,11 @@ local timer = iup.timer{
       local t = os.date("*t")
       uhrzeit(true)
       datum(true)
-      kalender(true)
+--      if icontype == "cal" then
+	 kalender(true)
+--      else
+	 webcam(true)
+--      end
       status(true)
       cnt = cnt + 1
       -- we display this counter in the status line
