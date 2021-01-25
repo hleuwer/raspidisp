@@ -84,9 +84,11 @@ local weatherImages, forecastImages = {}, {}
 local tempsess = snmp.open{peer="raspberrypi4"}
 
 for i,v in ipairs(weatherImageNames) do
-   weatherImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/PNG/"..weatherImageFiles[v])
+   weatherImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/PNG/"..
+				    weatherImageFiles[v])
    weatherImages[v].resize = "40x40"
-   forecastImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/PNG/"..weatherImageFiles[v])
+   forecastImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/PNG/"..
+				     weatherImageFiles[v])
    forecastImages[v].resize = "32x32"
 end
 
@@ -97,6 +99,7 @@ local sbutton = iup.button{
    action = function(self) os.exit(0) end
 }
 
+local wb_fname = "/mnt/pi4disk/dev/shm/mjpeg/cam.jpg"
 local imgold
 --------------------------------------------------------------------------------
 -- Read webcam image
@@ -104,8 +107,8 @@ local imgold
 --------------------------------------------------------------------------------
 function getWebcamImage()
    local wwidth = 220
-   local img = iup.LoadImage("/mnt/pi4disk/dev/shm/mjpeg/cam.jpg")
---   print("#1#", img, imgold)
+   
+   local img = iup.LoadImage(wb_fname)
    if img then
       img.resize = tostring(wwidth).."x"..tostring(wwidth*3/4)
       imgold = img
@@ -642,11 +645,10 @@ local timer = iup.timer{
       local t = os.date("*t")
       uhrzeit(true)
       datum(true)
---      if icontype == "cal" then
-	 kalender(true)
---      else
+      kalender(true)
+      if cnt % 10 == 7 then
 	 webcam(true)
---      end
+      end
       status(true)
       cnt = cnt + 1
       -- we display this counter in the status line
