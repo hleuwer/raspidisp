@@ -7,7 +7,7 @@ local pretty = require "pl.pretty"
 local format = string.format
 local yes, no = "YES", "NO"
 local vertical, horizontal = "VERTICAL", "HORIZONTAL"
-local HGAP, VGAP = 20, 5
+local HGAP, VGAP = 5, 5
 local wdays = {
    "Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"
 }
@@ -39,10 +39,12 @@ local logfile = assert(io.open("/tmp/disp.log", "a+"))
 logfile:write("=== log started" .. os.date() .. "\n")
 local t1, t2, dt, dtmax, dtmaxlast = 0, 0, 0, -1, 0
 local dtmaxlast = 0
-local cam
+local cam = {}
+local camcontainer
 
 -- List of computers to check
 local computers = {
+   {dname = "fritzbox .... ", hname = "fritz.box"},
    {dname = "macbookpro .. ", hname = "macbookpro"},
    {dname = "raspi 1 ..... ", hname = "raspberrypi1"},
    {dname = "raspi 2 ..... ", hname = "raspberrypi2"},
@@ -99,23 +101,61 @@ local sbutton = iup.button{
    action = function(self) os.exit(0) end
 }
 
-local wb_fname = "/mnt/pi4disk/dev/shm/mjpeg/cam.jpg"
-local imgold
+local statproc = iup.label{
+   font = "Arial, 10",
+   title = "  start ..."
+}
+
+-- SMB:
+-- local wb_fname = "/mnt/pi4disk/dev/shm/mjpeg/cam.jpg"
+-- NFS:
+local wb_fname = "/net/nfs/mjpeg/cam.jpg"
+local lwb_fname = "/dev/shm/mjpeg/cam.jpg"
+
+--------------------------------------------------------------------------------
+-- Copy webcam image to local ramdisk
+--------------------------------------------------------------------------------
+local function copyCam()
+   local s
+   local t0 = os.time()
+   repeat
+      local fi = assert(io.open(wb_fname,"rb"))
+      s = fi:read("*a")
+      fi:close()
+      if os.time() - t0 > 5 then
+	 logfile:write(format("%s: read timeout %d sec\n", os.date(),
+			      os.time() - t0))
+	 s = nil
+	 break
+      end
+   until s ~= nil 
+   if s then
+      local fo = assert(io.open(lwb_fname, "wb"))
+      fo:write(s)
+      fo:close()
+   end
+end
+
 --------------------------------------------------------------------------------
 -- Read webcam image
 -- @return iup image object
 --------------------------------------------------------------------------------
-function getWebcamImage()
+local function getWebcamImage()
    local wwidth = 220
-   
-   local img = iup.LoadImage(wb_fname)
-   if img then
-      img.resize = tostring(wwidth).."x"..tostring(wwidth*3/4)
-      imgold = img
-      return img
-   else
-      return imgold
-   end
+   local img
+   local trial = 1
+   local t0=os.time()
+   copyCam()
+   repeat
+      img = iup.LoadImage(lwb_fname)
+--      print("#1#", img, trial, iup.GetGlobal("IUPIM_LASTERROR"))
+      if os.time() - t0 > 2 then
+	 return nil, "timeout"
+      end
+      trial = trial + 1
+   until img ~= nil
+   img.resize = tostring(wwidth).."x"..tostring(wwidth*3/4)
+   return img
 end
 
 --------------------------------------------------------------------------------
@@ -129,7 +169,8 @@ end
 local function rechner(index, check)
    local s
    if check == true then
-      local res, _, n = os.execute("ping -c 1 -W 1 "..computers[index].hname)
+      statproc.title = format("  check rechner %q ...", computers[index].hname)
+      local res, _, n = os.execute("ping -c 1 -W 1 " .. computers[index].hname .. "> /dev/null")
       if res == true and n == 0 then
 	 s = "OK"
       else
@@ -140,7 +181,7 @@ local function rechner(index, check)
    else
       s = "--"
       computers[index].label = iup.flatlabel{
-	 font = "Courier New, 16",
+	 font = "Courier New, 12",
 	 title = computers[index].dname .. s
       }
       return computers[index].label
@@ -158,7 +199,7 @@ local function datum(check)
    local t = os.date("*t")
    if check == false then
       date = iup.label{
-	 font = "Arial, Bold 36",
+	 font = "Arial, Bold 32",
 	 title = format("%s, %02d.%02d.%04d",
 			       wdays[t.wday], t.day, t.month, t.year)
       }
@@ -202,6 +243,7 @@ local function tempsensor(index, check)
 	 }
       return tempsens[index]
    else
+      statproc.title = format("  check temperature %d ...", index)
       local temp = tonumber(tempsess["extOutput_"..index])
       tempsens[index].title = format("Temp %d: %5.1f °C", index, temp)
       return true
@@ -225,6 +267,7 @@ end
 local function wetter(check)
    local stat, s, t
    if check == true then
+      statproc.title = "  check wetter ..."
       stat, s = pcall(getWeather)
       if stat == true then
 	 local f = load(s)
@@ -309,6 +352,57 @@ local function isScreenOn()
    end
 end
 
+-------------------------------------------------------------------------------
+-- Webcam picture.
+-- @param check control what do do
+--              false - generate diag elements
+--              true  - read new image
+-- @return IUP element
+-------------------------------------------------------------------------------
+local function webcam(check)
+   if check == true then
+--      statproc.title = format("  check cam %d ...", camix)
+      local img
+--      print("#2#", camcontainer.valuepos, camix)
+      if camix == 0 then
+	 -- pic 0 is visible: make 1 visible and load into 0
+	 camcontainer.valuepos = 1
+	 cam[0].visble = no
+	 cam[1].visible = yes
+	 img = cam[0].image
+	 cam[0].image = getWebcamImage()
+	 camix = 1
+      else
+	 -- pic 1 is visible: make 0 visible and load into 1
+	 camcontainer.valuepos = 0
+	 cam[1].visble = no
+	 cam[0].visible = yes
+	 img = cam[1].image
+	 cam[1].image = getWebcamImage()
+	 camix = 0
+      end
+      img:destroy()
+   else
+      cam[0] = iup.label{
+	 image = getWebcamImage(),
+	 alignment = "ARIGHT:ABOTTOM",
+	 visible = yes
+      }
+      cam[1] = iup.label{
+	 image = getWebcamImage(),
+	 alignment = "ARIGHT:ABOTTOM",
+	 visible = no
+      }
+      camix = 0
+      camcontainer = iup.zbox{
+	 cam[0],
+	 cam[1],
+	 valuepos = 0
+      }
+      return camcontainer
+   end
+end
+
 --------------------------------------------------------------------------------
 -- Turn screen on or off and update state.
 -- @param button  Button to update title.
@@ -368,7 +462,10 @@ local function status(check)
 	 font = "Arial, 10",
 	 title = "---- kB"
       }
-      return iup.hbox{statscreen, statcount, statgc}
+      return iup.hbox{
+	 gap = 40,
+	 statscreen, statcount, statgc
+      }
    else
       statcount.title = format("%5d", mcnt)
       sstat = isScreenOn()
@@ -432,25 +529,6 @@ local function kalender(check)
 end
 
 -------------------------------------------------------------------------------
--- Webcam picture.
--- @param check control what do do
---              false - generate diag elements
---              true  - read new image
--- @return IUP element
--------------------------------------------------------------------------------
-local function webcam(check)
-   if check == true then
-      cam.image = getWebcamImage()
-   else
-      cam = iup.label{
-	 image = getWebcamImage(),
-	 alignment = "ARIGHT:ABOTTOM"
-      }
-      return cam
-   end
-end
-
--------------------------------------------------------------------------------
 -- Create  Icon in upper left corner
 -- @param which  "cal" for calendar, "lua" for Luanagios icon
 -- @return flatfram with selected icon embedded.
@@ -460,6 +538,8 @@ local function icon(which)
       alignment = "CENTER",
       bgcolor = "52 57 59",
       font = "Arial, 12",
+      childoffset = "5x10",
+      tabpadding = "5x5",
       iup.flatframe{
 	 marginleft = 5,
 	 margintop = 5,
@@ -554,7 +634,8 @@ local dlg = iup.dialog {
       iup.hbox {
 	 gap = HGAP,
 	 iup.vbox {
-	    gap = 3,
+--	    gap = 3,
+	    margin = "5x5",
 	    --	    icon("cal"),
 	    icon("cam"),
 --[[
@@ -574,7 +655,8 @@ local dlg = iup.dialog {
 	    rechner(4, false),
 	    rechner(5, false),
 	    rechner(6, false),
-	    rechner(7, false)
+	    rechner(7, false),
+	    rechner(8, false)
 	 },
 	 iup.vbox {
 	    width = "10x"
@@ -598,10 +680,13 @@ local dlg = iup.dialog {
 	 expand = yes
       },
       iup.hbox {
-	 gap = HGAP,
+--	 gap = 40,
 	 iup.hbox {
 	    screenButton,
-	    status(false),
+	    iup.vbox {
+	       status(false),
+	       statproc
+	    },
 	    iup.button{
 	       title = "Schließen",
 	       font = "Arial, 12",
@@ -634,9 +719,9 @@ local timer = iup.timer{
 	 mcnt = 1200
       end
       -- 1 second interval
-      if cnt % 2 == 0 then
+--      if cnt % 2 == 0 then
 	 collectgarbage("collect")
-      end
+--      end
       -- 30 seconds update temperatures
       if cnt % 60 == 5 then tempsensor(2, true) end
       if cnt % 60 == 7 then tempsensor(3, true) end
@@ -646,9 +731,7 @@ local timer = iup.timer{
       uhrzeit(true)
       datum(true)
       kalender(true)
-      if cnt % 10 == 7 then
-	 webcam(true)
-      end
+      webcam(true)
       status(true)
       cnt = cnt + 1
       -- we display this counter in the status line
@@ -660,9 +743,10 @@ local timer = iup.timer{
       t1 = t2
       if dt > dtmax then dtmax = dt end
       if dtmax ~= dtmaxlast then
-	 logfile:write(format("dt=%.3f dtmax=%.3f gc=%d  at %s\n",
-				     dt, dtmax, 
-				     collectgarbage("count"), os.date()))
+	 logfile:write(format("%s: dt=%.3f dtmax=%.3f gc=%d\n",
+			      os.date(),
+			      dt, dtmax, 
+			      collectgarbage("count")))
       end
       dtmaxlast = dtmax
       -- update status
