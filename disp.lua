@@ -2,7 +2,12 @@ local iup = require "iuplua"
 require "iupluaim"
 local snmp = require "snmp"
 local pretty = require "pl.pretty"
-
+local async = true
+local log = {
+   err = true,
+   measure = true,
+   dbg = false
+}
 -- Couple of generic constants and adjustments
 local format = string.format
 local yes, no = "YES", "NO"
@@ -44,15 +49,19 @@ local camcontainer
 
 -- List of computers to check
 local computers = {
-   {dname = "fritzbox .... ", hname = "fritz.box"},
-   {dname = "macbookpro .. ", hname = "macbookpro"},
-   {dname = "raspi 1 ..... ", hname = "raspberrypi1"},
-   {dname = "raspi 2 ..... ", hname = "raspberrypi2"},
-   {dname = "raspi 3 ..... ", hname = "raspberrypi3"},
-   {dname = "raspi 4 ..... ", hname = "raspberrypi4"},
-   {dname = "raspi 5 ..... ", hname = "raspberrypi5"},
-   {dname = "maclinux: ... ", hname = "maclinux"}
+--   {dname = "fritzbox .... ", hname = "fritz.box"},
+   {dname = "macbookpro:", hname = "macbookpro"},
+   {dname = "raspi 1   :", hname = "raspberrypi1"},
+   {dname = "raspi 2   :", hname = "raspberrypi2"},
+   {dname = "raspi 3   :", hname = "raspberrypi3"},
+   {dname = "raspi 4   :", hname = "raspberrypi4"},
+   {dname = "raspi     :", hname = "raspberrypi5"},
+   {dname = "maclinux  :", hname = "maclinux"}
 }
+
+for _, v in ipairs(computers) do
+   v.sess, err = snmp.open{peer = v.hname}
+end
 
 -- Load and condition weather icons
 local weatherImageNames = {
@@ -148,7 +157,6 @@ local function getWebcamImage()
    copyCam()
    repeat
       img = iup.LoadImage(lwb_fname)
---      print("#1#", img, trial, iup.GetGlobal("IUPIM_LASTERROR"))
       if os.time() - t0 > 2 then
 	 return nil, "timeout"
       end
@@ -156,6 +164,34 @@ local function getWebcamImage()
    until img ~= nil
    img.resize = tostring(wwidth).."x"..tostring(wwidth*3/4)
    return img
+end
+
+--------------------------------------------------------------------------------
+-- Rechner Callback
+-- @param vb result as varbind, nil in case of an error.
+-- @param err error string.
+-- @param index table index.
+-- @param reqid request id.
+-- @param sess session handle.
+-- @param magic opaque magic value, here: index of computer
+--------------------------------------------------------------------------------
+local function rechner_cb(vb, err, index, reqid, sess, magic)
+   if vb then
+      if log.measure then
+	 logfile:write(format("%s: rechner_cb() ok %s for rechner %q\n",
+			      os.date(), pretty.write(vb,""),
+			      computers[magic].hname))
+      end
+      computers[magic].label.title =
+	 format("%s %2d d %02d:%02d", computers[magic].dname,
+		vb.value.days, vb.value.hours, vb.value.minutes)
+   else
+      if log.err == true then
+	 logfile:write(format("%s: rechner_cb() error %s for rechner %q\n",
+			      os.date(), err, computers[magic].dname))
+      end
+      computers[magic].label.title = computers[magic].dname .. " down"
+   end
 end
 
 --------------------------------------------------------------------------------
@@ -169,17 +205,28 @@ end
 local function rechner(index, check)
    local s
    if check == true then
-      statproc.title = format("  check rechner %q ...", computers[index].hname)
-      local res, _, n = os.execute("ping -c 1 -W 1 " .. computers[index].hname .. "> /dev/null")
-      if res == true and n == 0 then
-	 s = "OK"
+      if async == true then
+	 local sess = computers[index].sess
+	 if sess then
+	    local ret, err = computers[index].sess:asynch_get("sysUpTime.0",
+							      rechner_cb, index)
+	 else
+	    computers[index].label.title = computers[index].dname .. " down"
+	 end
+	 return true
       else
-	 s = "--"
+	 statproc.title = format("  check rechner %q ...", computers[index].hname)
+	 local res, _, n = os.execute("ping -c 1 -W 1 " .. computers[index].hname .. "> /dev/null")
+	 if res == true and n == 0 then
+	    s = "OK"
+	 else
+	    s = "--"
+	 end
+	 computers[index].label.title = computers[index].dname .. s
+	 return true
       end
-      computers[index].label.title = computers[index].dname .. s
-      return true
    else
-      s = "--"
+      s = " wait ...     "
       computers[index].label = iup.flatlabel{
 	 font = "Courier New, 12",
 	 title = computers[index].dname .. s
@@ -233,20 +280,52 @@ local function uhrzeit(check)
 end
 
 --------------------------------------------------------------------------------
+-- Rechner Callback
+-- @param vb result as varbind, nil in case of an error.
+-- @param err error string.
+-- @param index table index.
+-- @param reqid request id.
+-- @param sess session handle.
+-- @param magic opaque magic value, here: index of computer
+--------------------------------------------------------------------------------
+local function temp_cb(vb, err, index, reqid, sess, magic)
+   if vb then
+      if log.measure then
+	 logfile:write(format("%s: temp_cb(): %s for sensor %d\n",
+			      os.date(), tostring(vb), magic))
+      end
+      tempsens[magic].title = format("Temp %d: %5.1f °C", magic, vb.value) 
+   else
+      -- log error
+      if log.err then
+	 logfile:write(format("%s: temp_cb() error %d\n", os.date(), err))
+      end
+   end
+end
+
+--------------------------------------------------------------------------------
 -- Temperature sensors
+-- @param index sensor index.
+-- @param check true: measure, false: build gui element
+-- @return true if check == true, iUP element if check == false
 --------------------------------------------------------------------------------
 local function tempsensor(index, check)
    if check == false then
       tempsens[index] = iup.label{
 	    font = "Arial, Bold 12",
-	    title = format("Temp %d: ---.- °C", index)
+	    title = format("Temp %d: wait ...", index)
 	 }
       return tempsens[index]
    else
-      statproc.title = format("  check temperature %d ...", index)
-      local temp = tonumber(tempsess["extOutput_"..index])
-      tempsens[index].title = format("Temp %d: %5.1f °C", index, temp)
-      return true
+      if async == true then
+	 local ret, err = tempsess:asynch_get("extOutput."..index, temp_cb, index)
+	 return true
+      else
+	 statproc.title = format("  check temperature %d ...", index)
+	 local temp = tonumber(tempsess["extOutput_"..index])
+	 tempsens[index].title = format("Temp %d: %5.1f °C", index, temp)
+	 return true
+      end
    end
 end
 
@@ -282,7 +361,6 @@ local function wetter(check)
 				       t.current.temp, t.current.humidity,
 				       t.current.weather[1].description)
 	 weatherimage.image = weatherImages[t.current.weather[1].icon]
---	 print("#1#", t.current.weather[1].icon, weatherImages[t.current.weather[1].icon])
 	 for k, u in ipairs(t.daily) do
 	    forecast[k].title = format("   %s: %+3.1f °C %5s %5s %s",
 					os.date("%d.%m", u.dt),
@@ -291,7 +369,6 @@ local function wetter(check)
 					os.date("%H:%M", u.sunset),
 					u.weather[1].description)
 	    forecastimage[k].image = forecastImages[u.weather[1].icon]
---	    print("#2#", u.weather[1].icon, forecastImages[u.weather[1].icon])
 	 end
       end
       return true
@@ -361,9 +438,7 @@ end
 -------------------------------------------------------------------------------
 local function webcam(check)
    if check == true then
---      statproc.title = format("  check cam %d ...", camix)
       local img
---      print("#2#", camcontainer.valuepos, camix)
       if camix == 0 then
 	 -- pic 0 is visible: make 1 visible and load into 0
 	 camcontainer.valuepos = 1
@@ -658,11 +733,11 @@ local dlg = iup.dialog {
 	    rechner(5, false),
 	    rechner(6, false),
 	    rechner(7, false),
-	    rechner(8, false)
+--	    rechner(8, false)
 	 },
-	 iup.vbox {
-	    width = "10x"
-	 },
+--	 iup.vbox {
+--	    width = "10x"
+--	 },
 	 iup.vbox {
 	    gap = 10,
 	    datum(false),
@@ -751,11 +826,18 @@ local timer = iup.timer{
 			      collectgarbage("count")))
       end
       dtmaxlast = dtmax
+--      snmp.event()
       -- update status
       sbutton.title = checkOnOff(screenButton, t)
    end
 }
-
+local timerSnmp = iup.timer{
+   time = 100,
+   action_cb = function(self)
+      snmp.event()
+   end
+}
 timer.run = yes
+timerSnmp.run = yes
 
 iup.MainLoop()
