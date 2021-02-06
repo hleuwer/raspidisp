@@ -381,7 +381,9 @@ local function webcam(check)
 	 cam[1].image = getWebcamImage()
 	 camix = 0
       end
-      img:destroy()
+      if img ~= nil then
+	 img:destroy()
+      end
    else
       cam[0] = iup.label{
 	 image = getWebcamImage(),
