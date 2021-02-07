@@ -2,12 +2,12 @@ local iup = require "iuplua"
 require "iupluaim"
 local snmp = require "snmp"
 local pretty = require "pl.pretty"
+logging = require "logging"
+require "logging.file"
+local log = logging.file("/tmp/disp.log")
+log:setLevel(logging.DEBUG)
+log:info("Log started")
 local async = true
-local log = {
-   err = true,
-   measure = true,
-   dbg = false
-}
 -- Couple of generic constants and adjustments
 local format = string.format
 local yes, no = "YES", "NO"
@@ -40,12 +40,11 @@ local screensize = "810 x 490"
 local cnt, mcnt = 1, 1200
 local statcount, statscreen, statgc
 local tempsens = {}
-local logfile = assert(io.open("/tmp/disp.log", "a+"))
-logfile:write("=== log started" .. os.date() .. "\n")
 local t1, t2, dt, dtmax, dtmaxlast = 0, 0, 0, -1, 0
 local dtmaxlast = 0
 local cam = {}
 local camcontainer
+local last_status_update = 0
 
 -- List of computers to check
 local computers = {
@@ -115,6 +114,11 @@ local statproc = iup.label{
    title = "  start ..."
 }
 
+local function putStatus(s)
+   statproc.title = s
+   last_status_update = os.time()
+end
+
 -- SMB:
 -- local wb_fname = "/mnt/pi4disk/dev/shm/mjpeg/cam.jpg"
 -- NFS:
@@ -132,8 +136,7 @@ local function copyCam()
       s = fi:read("*a")
       fi:close()
       if os.time() - t0 > 5 then
-	 logfile:write(format("%s: read timeout %d sec\n", os.date(),
-			      os.time() - t0))
+	 log:error(format("read timeout %d sec", os.time() - t0))
 	 s = nil
 	 break
       end
@@ -177,19 +180,15 @@ end
 --------------------------------------------------------------------------------
 local function rechner_cb(vb, err, index, reqid, sess, magic)
    if vb then
-      if log.measure then
-	 logfile:write(format("%s: rechner_cb() ok %s for rechner %q\n",
-			      os.date(), pretty.write(vb,""),
-			      computers[magic].hname))
-      end
+      log:debug(format("rechner_cb() ok %s for rechner %q",
+		       pretty.write(vb,""),
+		       computers[magic].hname))
       computers[magic].label.title =
 	 format("%s %2d d %02d:%02d", computers[magic].dname,
 		vb.value.days, vb.value.hours, vb.value.minutes)
    else
-      if log.err == true then
-	 logfile:write(format("%s: rechner_cb() error %s for rechner %q\n",
-			      os.date(), err, computers[magic].dname))
-      end
+      log:error(format("rechner_cb() error %s for rechner %q",
+		       err, computers[magic].dname))
       computers[magic].label.title = computers[magic].dname .. " down"
    end
 end
@@ -215,7 +214,7 @@ local function rechner(index, check)
 	 end
 	 return true
       else
-	 statproc.title = format("  check rechner %q ...", computers[index].hname)
+	 putStatus(format("  check rechner %q ...", computers[index].hname))
 	 local res, _, n = os.execute("ping -c 1 -W 1 " .. computers[index].hname .. "> /dev/null")
 	 if res == true and n == 0 then
 	    s = "OK"
@@ -290,16 +289,11 @@ end
 --------------------------------------------------------------------------------
 local function temp_cb(vb, err, index, reqid, sess, magic)
    if vb then
-      if log.measure then
-	 logfile:write(format("%s: temp_cb(): %s for sensor %d\n",
-			      os.date(), tostring(vb), magic))
-      end
+      log:debug(format("temp_cb(): %s for sensor %d", tostring(vb), magic))
       tempsens[magic].title = format("Temp %d: %5.1f °C", magic, vb.value) 
    else
       -- log error
-      if log.err then
-	 logfile:write(format("%s: temp_cb() error %d\n", os.date(), err))
-      end
+      log:error(format("temp_cb() error %d", err))
    end
 end
 
@@ -317,11 +311,11 @@ local function tempsensor(index, check)
 	 }
       return tempsens[index]
    else
+      putStatus(format("  check temperature %d ...", index))
       if async == true then
 	 local ret, err = tempsess:asynch_get("extOutput."..index, temp_cb, index)
 	 return true
       else
-	 statproc.title = format("  check temperature %d ...", index)
 	 local temp = tonumber(tempsess["extOutput_"..index])
 	 tempsens[index].title = format("Temp %d: %5.1f °C", index, temp)
 	 return true
@@ -346,7 +340,7 @@ end
 local function wetter(check)
    local stat, s, t
    if check == true then
-      statproc.title = "  check wetter ..."
+      putStatus("  check weather ...")
       stat, s = pcall(getWeather)
       if stat == true then
 	 local f = load(s)
@@ -544,6 +538,9 @@ local function status(check)
 	 statscreen, statcount, statgc
       }
    else
+      if os.time() - last_status_update > 5 then
+	 putStatus("")
+      end
       statcount.title = format("%5d", mcnt)
       sstat = isScreenOn()
       statgc.title = format("%4d kB", collectgarbage("count"))
@@ -757,10 +754,11 @@ local dlg = iup.dialog {
 	 expand = yes
       },
       iup.hbox {
---	 gap = 40,
+	 gap = 40,
 	 iup.hbox {
 	    screenButton,
 	    iup.vbox {
+	       gap = 0,
 	       status(false),
 	       statproc
 	    },
@@ -795,14 +793,14 @@ local timer = iup.timer{
 	 wetter(true)
 	 mcnt = 1200
       end
-      -- 1 second interval
---      if cnt % 2 == 0 then
-	 collectgarbage("collect")
---      end
+      collectgarbage("collect")
       -- 30 seconds update temperatures
-      if cnt % 60 == 5 then tempsensor(2, true) end
-      if cnt % 60 == 7 then tempsensor(3, true) end
-      if cnt % 60 == 9 then tempsensor(4, true) end
+      
+      if cnt % 60 == 8 then
+	 for i = 2, 4 do
+	    tempsensor(i, true)
+	 end
+      end
       
       local t = os.date("*t")
       uhrzeit(true)
@@ -820,10 +818,8 @@ local timer = iup.timer{
       t1 = t2
       if dt > dtmax then dtmax = dt end
       if dtmax ~= dtmaxlast then
-	 logfile:write(format("%s: dt=%.3f dtmax=%.3f gc=%d\n",
-			      os.date(),
-			      dt, dtmax, 
-			      collectgarbage("count")))
+	 log:info(format("dt=%.3f dtmax=%.3f gc=%d", dt, dtmax,
+			 collectgarbage("count")))
       end
       dtmaxlast = dtmax
 --      snmp.event()
@@ -831,6 +827,7 @@ local timer = iup.timer{
       sbutton.title = checkOnOff(screenButton, t)
    end
 }
+
 local timerSnmp = iup.timer{
    time = 100,
    action_cb = function(self)
