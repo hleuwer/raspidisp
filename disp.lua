@@ -829,7 +829,7 @@ local timer = iup.timer{
 }
 
 local timerSnmp = iup.timer{
-   time = 100,
+   time = 50,
    action_cb = function(self)
       snmp.event()
    end
