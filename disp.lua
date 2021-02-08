@@ -4,10 +4,22 @@ local snmp = require "snmp"
 local pretty = require "pl.pretty"
 logging = require "logging"
 require "logging.file"
+local copas = require "copas"
+local asynchttp = require("copas.http").request
+local json = require "cjson"
+local socket = require "socket"
+
+--------------------------------------------------------------------------------
+-- We need this for decoding openweathermap.com json results correctly
+os.setlocale("de_DE.UTF-16")
+
+--------------------------------------------------------------------------------
+-- Logging stuff
 local log = logging.file("/tmp/disp.log")
 log:setLevel(logging.DEBUG)
 log:info("Log started")
-local async = true
+
+--------------------------------------------------------------------------------
 -- Couple of generic constants and adjustments
 local format = string.format
 local yes, no = "YES", "NO"
@@ -28,6 +40,7 @@ local onoff = {
    }
 }
 
+--------------------------------------------------------------------------------
 -- Variables
 local screenOn = true
 local clock
@@ -46,6 +59,7 @@ local cam = {}
 local camcontainer
 local last_status_update = 0
 
+--------------------------------------------------------------------------------
 -- List of computers to check
 local computers = {
 --   {dname = "fritzbox .... ", hname = "fritz.box"},
@@ -57,11 +71,12 @@ local computers = {
    {dname = "raspi     :", hname = "raspberrypi5"},
    {dname = "maclinux  :", hname = "maclinux"}
 }
-
+-- Create an SNMP session for each computer
 for _, v in ipairs(computers) do
-   v.sess, err = snmp.open{peer = v.hname}
+   v.sess, err = snmp.open{peer = v.hname, retries = 1}
 end
 
+--------------------------------------------------------------------------------
 -- Load and condition weather icons
 local weatherImageNames = {
 "01d", "02d", "03d", "04d", "09d", "10d", "11d", "13d", "50d",
@@ -102,6 +117,8 @@ for i,v in ipairs(weatherImageNames) do
    forecastImages[v].resize = "32x32"
 end
 
+--------------------------------------------------------------------------------
+-- Some predefined GUI elements
 local luaicon = iup.LoadImage("/usr/local/share/luanagios/img/luanagios.png")
 
 local sbutton = iup.button{
@@ -119,14 +136,23 @@ local function putStatus(s)
    last_status_update = os.time()
 end
 
--- SMB:
+-- SMB: do not use - NFS seems more stable
 -- local wb_fname = "/mnt/pi4disk/dev/shm/mjpeg/cam.jpg"
 -- NFS:
 local wb_fname = "/net/nfs/mjpeg/cam.jpg"
 local lwb_fname = "/dev/shm/mjpeg/cam.jpg"
 
 --------------------------------------------------------------------------------
+-- URL for weather data
+local fin = assert(io.open("/home/leuwer/.appid", "r"))
+local appid = fin:read("*l")
+local url = "http://api.openweathermap.org/data/2.5/onecall?lat=54.05&lon=10.08&lang=de&units=metric&appid="..appid
+--log:debug("URL: " .. url)
+
+
+--------------------------------------------------------------------------------
 -- Copy webcam image to local ramdisk
+-- @return none.
 --------------------------------------------------------------------------------
 local function copyCam()
    local s
@@ -204,26 +230,15 @@ end
 local function rechner(index, check)
    local s
    if check == true then
-      if async == true then
-	 local sess = computers[index].sess
-	 if sess then
-	    local ret, err = computers[index].sess:asynch_get("sysUpTime.0",
-							      rechner_cb, index)
-	 else
-	    computers[index].label.title = computers[index].dname .. " down"
-	 end
-	 return true
+      putStatus(format("  check rechner %q ...", computers[index].hname))
+      local sess = computers[index].sess
+      if sess then
+	 local ret, err = computers[index].sess:asynch_get("sysUpTime.0",
+							   rechner_cb, index)
       else
-	 putStatus(format("  check rechner %q ...", computers[index].hname))
-	 local res, _, n = os.execute("ping -c 1 -W 1 " .. computers[index].hname .. "> /dev/null")
-	 if res == true and n == 0 then
-	    s = "OK"
-	 else
-	    s = "--"
-	 end
-	 computers[index].label.title = computers[index].dname .. s
-	 return true
+	 computers[index].label.title = computers[index].dname .. " down"
       end
+      return true
    else
       s = " wait ...     "
       computers[index].label = iup.flatlabel{
@@ -273,6 +288,7 @@ local function uhrzeit(check)
       }
       return clock
    else
+      log:debug("updating time ...")
       clock.title = format("%02d:%02d:%02d", t.hour, t.min, t.sec)
       return true
    end
@@ -312,23 +328,59 @@ local function tempsensor(index, check)
       return tempsens[index]
    else
       putStatus(format("  check temperature %d ...", index))
-      if async == true then
 	 local ret, err = tempsess:asynch_get("extOutput."..index, temp_cb, index)
 	 return true
-      else
-	 local temp = tonumber(tempsess["extOutput_"..index])
-	 tempsens[index].title = format("Temp %d: %5.1f °C", index, temp)
-	 return true
-      end
    end
 end
+
 
 --------------------------------------------------------------------------------
 -- Get weather forecast data
 -- @return table with weather forecast data
 --------------------------------------------------------------------------------
 local function getWeather()
-   return io.popen("check_weather -l 'Gross Kummerfeld' -L de -m forecast -P `cat ~/.appid` -t"):read("*a")
+   local res, err = asynchttp(url)
+   log:debug(res)
+   return res
+end
+
+--------------------------------------------------------------------------------
+-- Update weather in GUI.
+-- @param t Table containing weather data.
+-- @return none.
+--------------------------------------------------------------------------------
+local function updateWeather(t)
+   weather.title = format("  %+3.1f °C - %d %% - %s",
+			  t.current.temp, t.current.humidity,
+			  t.current.weather[1].description)
+   weatherimage.image = weatherImages[t.current.weather[1].icon]
+   for k, u in ipairs(t.daily) do
+      forecast[k].title = format("   %s: %+3.1f °C %5s %5s %s",
+				 os.date("%d.%m", u.dt),
+				 u.temp.day,
+				 os.date("%H:%M", u.sunrise),
+				 os.date("%H:%M", u.sunset),
+				 u.weather[1].description)
+      forecastimage[k].image = forecastImages[u.weather[1].icon]
+   end
+end
+
+--------------------------------------------------------------------------------
+-- Weather data response handler.
+-- @return none.
+--------------------------------------------------------------------------------
+local function weatherHandler()
+   local res, err = asynchttp(url)
+   log:debug(format("weather result received: json=%s", "xx" or res))
+   if res ~= nil then
+      t = json.decode(res)
+      log:debug(format("weather result decoded: lua=%s", "yy" or pretty.write(t,"")))
+      if t ~= nil then
+	 updateWeather(t)
+      end
+   else
+      log:error(format("weather request faild with %q", err))
+   end
 end
 
 --------------------------------------------------------------------------------
@@ -341,29 +393,10 @@ local function wetter(check)
    local stat, s, t
    if check == true then
       putStatus("  check weather ...")
-      stat, s = pcall(getWeather)
-      if stat == true then
-	 local f = load(s)
-	 if f ~= nil then
-	    t = f()
-	 else
-	    t = nil
-	 end
-      end
-      if t ~= nil then
-	 weather.title = format("  %+3.1f °C - %d %% - %s",
-				       t.current.temp, t.current.humidity,
-				       t.current.weather[1].description)
-	 weatherimage.image = weatherImages[t.current.weather[1].icon]
-	 for k, u in ipairs(t.daily) do
-	    forecast[k].title = format("   %s: %+3.1f °C %5s %5s %s",
-					os.date("%d.%m", u.dt),
-					u.temp.day,
-					os.date("%H:%M", u.sunrise),
-					os.date("%H:%M", u.sunset),
-					u.weather[1].description)
-	    forecastimage[k].image = forecastImages[u.weather[1].icon]
-	 end
+      log:debug(format("launching weather request %s", url))
+      local res, err = copas.addthread(weatherHandler, url)
+      if not res then
+	 log:error(format("launching weather request failed with %q", err))
       end
       return true
    else
@@ -620,12 +653,6 @@ local function icon(which)
 	 kalender(false),
 	 frame = no,
       },
---      iup.flatframe{
---	 bgcolor = "132 132 132",
---	 iup.label{
---	    image = luaicon,
---	 }
---      },
       iup.flatframe{
 	 webcam(false),
 	 marginleft = 5,
@@ -633,15 +660,10 @@ local function icon(which)
 	 frame = no,
       },
       tabtitle0 = "Kalender",
---      tabtitle1 = "Icon",
       tabtitle1 = " Kamera ",
---      tabtype = "BOTTOM",
---      taborientation = "VERTICAL"
    }
    if which == "cal" then
       icontab.valuepos = 0
---   elseif which == "lua" then
---      icontab.valuepos = 1
    else
       icontab.valuepos = 1
    end
@@ -649,57 +671,10 @@ local function icon(which)
 end
 
 -------------------------------------------------------------------------------
--- Create  Icon in upper left corner
--- @param which  "cal" for calendar, "lua" for Luanagios icon
--- @return flatfram with selected icon embedded.
--------------------------------------------------------------------------------
-local function __icon(which)
-   which = which or "cal"
-   if which == "cal" then
-      icontype = which
-      return
-	 iup.flatframe{
-	    marginleft = 5,
-	    margintop = 5,
-	    kalender(false),
-	 },
-	 iup.space{
-	    size = "x10",
-	    expand = no
-	 }
-	 
-   elseif which == "lua" then
-      return
-	 iup.flatframe{
-	    bgcolor = "132 132 132",
-	    iup.label{
-	       image = luaicon,
-	    }
-	 },
-	 iup.space{
-	    size = "x10",
-	    expand = no
-	 }
-   elseif which == "cam" then
-      return
-	 iup.flatframe{
-	    webcam(false)
-	 },
-	 iup.space{
-	    size = "x10",
-	    expand = no
-	 }
-	 
-   end
-end
-
--------------------------------------------------------------------------------
 -- This is the main dialog
 -------------------------------------------------------------------------------
 local dlg = iup.dialog {
---   size = "FULL",
    rastersize = screensize,
-   --   font = "Arial, Bold 18"
    menubox = no,
    maxbox = no,
    minbox = no,
@@ -710,19 +685,7 @@ local dlg = iup.dialog {
 	 iup.vbox {
 --	    gap = 3,
 	    margin = "5x5",
-	    --	    icon("cal"),
 	    icon("cam"),
---[[
-	    iup.hbox {
-	       iup.label{
-		  font = "Arial, Bold 18",
-		  title = "  "
-		  --title = "RECHNER:"
-	       },
---	       sbutton,
-	       normalizesize = "VERTICAL"
-	    },
-]]
 	    rechner(1, false),
 	    rechner(2, false),
 	    rechner(3, false),
@@ -730,11 +693,7 @@ local dlg = iup.dialog {
 	    rechner(5, false),
 	    rechner(6, false),
 	    rechner(7, false),
---	    rechner(8, false)
 	 },
---	 iup.vbox {
---	    width = "10x"
---	 },
 	 iup.vbox {
 	    gap = 10,
 	    datum(false),
@@ -777,7 +736,7 @@ local dlg = iup.dialog {
 dlg:show()
 
 -------------------------------------------------------------------------------
--- Timer for triggering the updates.
+-- Timer for triggering the updates -- every 500 ms
 -------------------------------------------------------------------------------
 local timer = iup.timer{
    time = 500,
@@ -822,19 +781,22 @@ local timer = iup.timer{
 			 collectgarbage("count")))
       end
       dtmaxlast = dtmax
---      snmp.event()
       -- update status
       sbutton.title = checkOnOff(screenButton, t)
    end
 }
 
+-------------------------------------------------------------------------------
+-- Timer for event hanlding - every 50 ms
+-------------------------------------------------------------------------------
 local timerSnmp = iup.timer{
    time = 50,
    action_cb = function(self)
       snmp.event()
+      copas.step(0)
    end
 }
-timer.run = yes
 timerSnmp.run = yes
+timer.run = yes
 
 iup.MainLoop()
