@@ -16,7 +16,7 @@ os.setlocale("de_DE.UTF-16")
 --------------------------------------------------------------------------------
 -- Logging stuff
 local log = logging.file("/tmp/disp.log")
-log:setLevel(logging.DEBUG)
+log:setLevel(logging.INFO)
 log:info("Log started")
 
 --------------------------------------------------------------------------------
