@@ -205,7 +205,7 @@ end
 -- @param magic opaque magic value, here: index of computer
 --------------------------------------------------------------------------------
 local function rechner_cb(vb, err, index, reqid, sess, magic)
-   if vb then
+   if vb and vb.value then
       log:debug(format("rechner_cb() ok %s for rechner %q",
 		       pretty.write(vb,""),
 		       computers[magic].hname))
