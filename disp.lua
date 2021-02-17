@@ -68,7 +68,7 @@ local computers = {
    {dname = "raspi 2   :", hname = "raspberrypi2"},
    {dname = "raspi 3   :", hname = "raspberrypi3"},
    {dname = "raspi 4   :", hname = "raspberrypi4"},
-   {dname = "raspi     :", hname = "raspberrypi5"},
+   {dname = "raspi 5   :", hname = "raspberrypi5"},
    {dname = "maclinux  :", hname = "maclinux"}
 }
 -- Create an SNMP session for each computer
@@ -306,7 +306,7 @@ end
 local function temp_cb(vb, err, index, reqid, sess, magic)
    if vb then
       log:debug(format("temp_cb(): %s for sensor %d", tostring(vb), magic))
-      tempsens[magic].title = format("Temp %d: %5.1f °C", magic, vb.value) 
+      tempsens[magic].title = format("Temp %d: %+5.1f °C", magic, vb.value) 
    else
       -- log error
       log:error(format("temp_cb() error %d", err))
@@ -355,7 +355,7 @@ local function updateWeather(t)
 			  t.current.weather[1].description)
    weatherimage.image = weatherImages[t.current.weather[1].icon]
    for k, u in ipairs(t.daily) do
-      forecast[k].title = format("   %s: %+3.1f °C %5s %5s %s",
+      forecast[k].title = format(" %s: %+5.1f °C %5s %5s %s",
 				 os.date("%d.%m", u.dt),
 				 u.temp.day,
 				 os.date("%H:%M", u.sunrise),
@@ -402,7 +402,7 @@ local function wetter(check)
    else
       weather = iup.label{
 	 font = "Courier New, Bold 14",
-	 title = "wait ...",
+	 title = "  wait ...",
       }
       
       weatherimage = iup.label{
@@ -412,7 +412,7 @@ local function wetter(check)
       for i = 1, 8 do
 	 forecast[i] = iup.label{
 	    font = "Courier New, Bold 12",
-	    title = "wait ...",
+	    title = "  wait ...",
 	 }
 	 forecastimage[i] = iup.label{
 	    image = forecastImages["50d"],
