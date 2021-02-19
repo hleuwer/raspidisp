@@ -13,6 +13,12 @@ local socket = require "socket"
 -- We need this for decoding openweathermap.com json results correctly
 os.setlocale("de_DE.UTF-16")
 
+local opt = {
+   weather = {
+      showPressure = true
+   }
+}
+
 --------------------------------------------------------------------------------
 -- Logging stuff
 local log = logging.file("/tmp/disp.log")
@@ -123,6 +129,7 @@ local luaicon = iup.LoadImage("/usr/local/share/luanagios/img/luanagios.png")
 
 local sbutton = iup.button{
    title = scstate,
+   tip = "Schalte Bildschirm hell oder dunkel",
    action = function(self) os.exit(0) end
 }
 
@@ -355,16 +362,24 @@ local function updateWeather(t)
 			  t.current.weather[1].description)
    weatherimage.image = weatherImages[t.current.weather[1].icon]
    for k, u in ipairs(t.daily) do
-      forecast[k].title = format(" %s: %+5.1f °C %5s %5s %s",
-				 os.date("%d.%m", u.dt),
-				 u.temp.day,
-				 os.date("%H:%M", u.sunrise),
-				 os.date("%H:%M", u.sunset),
-				 u.weather[1].description)
-      forecastimage[k].image = forecastImages[u.weather[1].icon]
+      if opt.weather.showPressure == true then
+   	 forecast[k].title = format(" %s: %+5.1f °C %4d hPa - %s",
+				    os.date("%d.%m", u.dt),
+				    u.temp.day,
+				    u.pressure,
+				    u.weather[1].description)
+      else
+	 forecast[k].title = format(" %s: %+5.1f °C %5s %5s %s",
+				    os.date("%d.%m", u.dt),
+				    u.temp.day,
+				    os.date("%H:%M", u.sunrise),
+				    os.date("%H:%M", u.sunset),
+				    u.weather[1].description)
+      end
+	 forecastimage[k].image = forecastImages[u.weather[1].icon]
    end
 end
-
+local lastWeather
 --------------------------------------------------------------------------------
 -- Weather data response handler.
 -- @return none.
@@ -377,6 +392,7 @@ local function weatherHandler()
       log:debug(format("weather result decoded: lua=%s", "yy" or pretty.write(t,"")))
       if t ~= nil then
 	 updateWeather(t)
+	 lastWeather = t
       end
    else
       log:error(format("weather request faild with %q", err))
@@ -535,6 +551,7 @@ local screenButton = iup.button{
    title = "Dunkel",
    font = "Arial, 12",
    expand = horizontal,
+   tip = "Schalte Bildschirm dunkel und wieder hell",
    action = function(self)
       if scstate == "on" then
 	 screenOn(self, false)
@@ -634,7 +651,26 @@ local function kalender(check)
       return cal
    end
 end
-
+local show_sunrise = iup.toggle{
+   title = "Sonnenauf- u. Untergang",
+   tip = "Zeige Sonnenaufgang und -untergang in Wettervorhersage",
+   font = "Arial, 10",
+   flat = yes,
+   action = function(v)
+      opt.weather.showPressure = false
+      updateWeather(lastWeather)
+   end
+}
+local show_pressure = iup.toggle{
+   title = "Luftdruck",
+   tip = "zeige Luftdurck in Wettervorhersage",
+   font = "Arial, 10",
+   flat = yes,
+   action = function(v)
+      opt.weather.showPressure = true
+      updateWeather(lastWeather)
+   end
+}
 -------------------------------------------------------------------------------
 -- Create  Icon in upper left corner
 -- @param which  "cal" for calendar, "lua" for Luanagios icon
@@ -659,13 +695,62 @@ local function icon(which)
 	 margintop = 5,
 	 frame = no,
       },
+      iup.flatframe{
+	 iup.vbox{
+	    iup.radio{
+	       iup.vbox{
+		  show_sunrise,
+		  show_pressure
+	       },
+	       value = show_pressure
+	    },
+	    iup.button{
+	       title = "Temperatur    ",
+	       font = "Arial, 10",
+	       flat = yes,
+	       size = "50x",
+	       tip = "Rufe Temperatur ab",
+	       action = function(self)
+		  for i = 2, 4 do
+		     tempsensor(i, true)
+		  end
+	       end
+	    },
+	    iup.button{
+	       title = "Wetter abrufen",
+	       font = "Arial, 10",
+	       flat = yes,
+	       tip = "Rufe Wetter ab",
+	       size = "50x",
+	       action = function(self) wetter(true) end
+	    },
+	    iup.button{
+	       title = "Prüfe Rechner ",
+	       font = "Arial, 10",
+	       flat = yes,
+	       size = "50x",
+	       tip = "Profe alle Rechner",
+	       action = function(self)
+		  for i = 1, #computers do
+		     rechner(i, true)
+		  end
+	       end
+	    }
+	 },
+	 marginleft = 5,
+	 margintop = 5,
+	 frame = no
+      },
       tabtitle0 = "Kalender",
       tabtitle1 = " Kamera ",
+      tabtitle2 = "Options"
    }
    if which == "cal" then
       icontab.valuepos = 0
-   else
+   elseif which == "cam" then
       icontab.valuepos = 1
+   else
+      icontab.valuepos = 3
    end
    return icontab
 end
@@ -683,7 +768,7 @@ local dlg = iup.dialog {
       iup.hbox {
 	 gap = HGAP,
 	 iup.vbox {
---	    gap = 3,
+	    gap = 3,
 	    margin = "5x5",
 	    icon("cam"),
 	    rechner(1, false),
@@ -725,6 +810,7 @@ local dlg = iup.dialog {
 	       title = "Schließen",
 	       font = "Arial, 12",
 	       expand = horizontal,
+	       tip = "Verlasse das Programm",
 	       action = function(self) os.exit(0) end
 	    }
 	 }
