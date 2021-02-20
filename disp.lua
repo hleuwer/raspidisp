@@ -15,8 +15,10 @@ os.setlocale("de_DE.UTF-16")
 
 local opt = {
    weather = {
-      showPressure = true
-   }
+      showPressure = true,
+      togglePressure = true,
+   },
+   toggleWebcam = true
 }
 
 --------------------------------------------------------------------------------
@@ -64,7 +66,6 @@ local dtmaxlast = 0
 local cam = {}
 local camcontainer
 local last_status_update = 0
-
 --------------------------------------------------------------------------------
 -- List of computers to check
 local computers = {
@@ -658,6 +659,7 @@ local show_sunrise = iup.toggle{
    flat = yes,
    action = function(v)
       opt.weather.showPressure = false
+      opt.weather.togglePressure = false
       updateWeather(lastWeather)
    end
 }
@@ -668,15 +670,39 @@ local show_pressure = iup.toggle{
    flat = yes,
    action = function(v)
       opt.weather.showPressure = true
+      opt.weather.togglePressure = false
       updateWeather(lastWeather)
    end
 }
+local show_toggle = iup.toggle{
+   title = "Wechsel",
+   tip = "Wechsel zwischen Sonnenaufgang/-untergang und Luftdruck",
+   font = "Arial, 10",
+   flat = yes,
+   action = function(v)
+      opt.weather.showPressure = false
+      opt.weather.togglePressure = true
+      updateWeather(lastWeather)
+   end
+}
+
 -------------------------------------------------------------------------------
 -- Create  Icon in upper left corner
 -- @param which  "cal" for calendar, "lua" for Luanagios icon
 -- @return flatfram with selected icon embedded.
 -------------------------------------------------------------------------------
 local function icon(which)
+   local function _radio_selector()
+      if opt.weather.togglePressure == true then
+	 return show_toggle
+      else
+	 if opt.weather.showPressure == true then
+	    return show_pressure
+	 else
+	    return show_sunrise
+	 end
+      end
+   end
    icontab = iup.tabs{
       alignment = "CENTER",
       bgcolor = "52 57 59",
@@ -700,15 +726,16 @@ local function icon(which)
 	    iup.radio{
 	       iup.vbox{
 		  show_sunrise,
-		  show_pressure
+		  show_pressure,
+		  show_toggle
 	       },
-	       value = show_pressure
+	       value = _radio_selector()
 	    },
 	    iup.button{
 	       title = "Temperatur    ",
 	       font = "Arial, 10",
 	       flat = yes,
-	       size = "50x",
+	       size = "80x",
 	       tip = "Rufe Temperatur ab",
 	       action = function(self)
 		  for i = 2, 4 do
@@ -721,14 +748,14 @@ local function icon(which)
 	       font = "Arial, 10",
 	       flat = yes,
 	       tip = "Rufe Wetter ab",
-	       size = "50x",
+	       size = "80x",
 	       action = function(self) wetter(true) end
 	    },
 	    iup.button{
 	       title = "Prüfe Rechner ",
 	       font = "Arial, 10",
 	       flat = yes,
-	       size = "50x",
+	       size = "80x",
 	       tip = "Profe alle Rechner",
 	       action = function(self)
 		  for i = 1, #computers do
@@ -820,33 +847,38 @@ local dlg = iup.dialog {
 
 -- show the dialog
 dlg:show()
-
+local calTrig = 0
 -------------------------------------------------------------------------------
 -- Timer for triggering the updates -- every 500 ms
 -------------------------------------------------------------------------------
 local timer = iup.timer{
    time = 500,
    action_cb = function(self)
+
       -- 300 second interval - 5 minutes
       if cnt % (600) == 10 then
 	 for i = 1, #computers do
 	    rechner(i, true)
 	 end
       end
+
       -- 600 second interval - 10  minutes
       if cnt % (1200) == 12 then
 	 wetter(true)
 	 mcnt = 1200
       end
+
+      -- every 0.5 seconds: collect garbage
       collectgarbage("collect")
+
       -- 30 seconds update temperatures
-      
       if cnt % 60 == 8 then
 	 for i = 2, 4 do
 	    tempsensor(i, true)
 	 end
       end
-      
+
+      -- every 0.5 seconds: data, time, calendar, webcam, status
       local t = os.date("*t")
       uhrzeit(true)
       datum(true)
@@ -854,6 +886,7 @@ local timer = iup.timer{
       webcam(true)
       status(true)
       cnt = cnt + 1
+
       -- we display this counter in the status line
       mcnt = mcnt - 1
       
@@ -867,6 +900,28 @@ local timer = iup.timer{
 			 collectgarbage("count")))
       end
       dtmaxlast = dtmax
+
+      -- every 30 seconds: change between pressure and sunrise/sunset
+      if cnt % 60 == 0 then
+	 if opt.weather.togglePressure == true then
+	    opt.weather.showPressure = not opt.weather.showPressure
+	    updateWeather(lastWeather)
+	 end
+      end
+
+      -- every minute: show calendar for 10 seconds
+      if cnt % 120 == calTrig then
+	 if opt.toggleWebcam == true and icontab.valuepos ~= "2" then
+	    if calTrig == 0 then
+	       icontab.valuepos = 0
+	       calTrig = 20
+	    else
+	       icontab.valuepos = 1
+	       calTrig = 0
+	    end
+	 end
+      end
+      
       -- update status
       sbutton.title = checkOnOff(screenButton, t)
    end
