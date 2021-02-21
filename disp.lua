@@ -652,6 +652,10 @@ local function kalender(check)
       return cal
    end
 end
+
+-------------------------------------------------------------------------------
+-- Option check boxes
+-------------------------------------------------------------------------------
 local show_sunrise = iup.toggle{
    title = "Sonnenauf- u. Untergang",
    tip = "Zeige Sonnenaufgang und -untergang in Wettervorhersage",
@@ -847,10 +851,11 @@ local dlg = iup.dialog {
 
 -- show the dialog
 dlg:show()
-local calTrig = 0
+
 -------------------------------------------------------------------------------
 -- Timer for triggering the updates -- every 500 ms
 -------------------------------------------------------------------------------
+local calTrig = 0
 local timer = iup.timer{
    time = 500,
    action_cb = function(self)
