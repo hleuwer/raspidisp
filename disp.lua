@@ -1,6 +1,7 @@
 local iup = require "iuplua"
 require "iupluaim"
 local snmp = require "snmp"
+local soap_client = require "soap.client"
 local pretty = require "pl.pretty"
 logging = require "logging"
 require "logging.file"
@@ -70,17 +71,21 @@ local last_status_update = 0
 -- List of computers to check
 local computers = {
 --   {dname = "fritzbox .... ", hname = "fritz.box"},
-   {dname = "macbookpro:", hname = "macbookpro"},
-   {dname = "raspi 1   :", hname = "raspberrypi1"},
-   {dname = "raspi 2   :", hname = "raspberrypi2"},
-   {dname = "raspi 3   :", hname = "raspberrypi3"},
-   {dname = "raspi 4   :", hname = "raspberrypi4"},
-   {dname = "raspi 5   :", hname = "raspberrypi5"},
-   {dname = "maclinux  :", hname = "maclinux"}
+   {dname = "fritz7590 :", hname = "macbookpro", reqtype = "soap"},
+   {dname = "macbookpro:", hname = "macbookpro", reqtype = "snmp"},
+   {dname = "raspi 1   :", hname = "raspberrypi1", reqtype = "snmp"},
+   {dname = "raspi 2   :", hname = "raspberrypi2", reqtype = "snmp"},
+   {dname = "raspi 3   :", hname = "raspberrypi3", reqtype = "snmp"},
+   {dname = "raspi 4   :", hname = "raspberrypi4", reqtype = "snmp"},
+   {dname = "raspi 5   :", hname = "raspberrypi5", reqtype = "snmp"},
+   {dname = "maclinux  :", hname = "maclinux", reqtype = "snmp"}
+   
 }
 -- Create an SNMP session for each computer
 for _, v in ipairs(computers) do
-   v.sess, err = snmp.open{peer = v.hname, retries = 1}
+   if v.reqtype == "snmp" then
+      v.sess, err = snmp.open{peer = v.hname, retries = 1}
+   end
 end
 
 --------------------------------------------------------------------------------
@@ -227,6 +232,22 @@ local function rechner_cb(vb, err, index, reqid, sess, magic)
    end
 end
 
+local function secs2date(secs)
+   local days = math.floor(secs / 86400)
+   local hours = math.floor(secs / 3600) - (days * 24)
+   local minutes = math.floor(secs / 60) - (days * 1440) - (hours * 60)
+   local seconds = secs % 60
+   return {
+      days = days, hours = hours, minutes = minutes, seconds = seconds
+   }
+end
+
+local function router_cb(ns, meth, ent, soap_headers, body, magic)
+   local r = secs2date(tonumber(ent[22][1]))
+   computers[magic].label.title =
+      format("%s %2d d %02d:%02d", computers[magic].dname,
+	     r.days, r.hours, r.minutes, r.seconds)
+end
 --------------------------------------------------------------------------------
 -- Computer status evaluation and display.
 -- @param index Index to retrieve computer info: display and hostname
@@ -239,12 +260,29 @@ local function rechner(index, check)
    local s
    if check == true then
       putStatus(format("  check rechner %q ...", computers[index].hname))
-      local sess = computers[index].sess
-      if sess then
-	 local ret, err = computers[index].sess:asynch_get("sysUpTime.0",
-							   rechner_cb, index)
-      else
-	 computers[index].label.title = computers[index].dname .. " down"
+      if computers[index].reqtype == "snmp" then
+	 local sess = computers[index].sess
+	 if sess then
+	    local ret, err = computers[index].sess:asynch_get("sysUpTime.0",
+							      rechner_cb, index)
+	 else
+	    computers[index].label.title = computers[index].dname .. " down"
+	 end
+      elseif computers[index].reqtype == "soap" then
+	 local user, pw = "leuwer", "herbie#220991"
+	 local request = {
+	    soapaction = "urn:dslforum-org:service:DeviceInfo:1#GetInfo",
+	    url = "http://"..user..":"..pw.."@fritz.box:49000/upnp/control/deviceinfo",
+	    auth = "digest",
+	    entries = {
+	       tag = "u:GetInfo"
+	    },
+	    method = "GetInfo",
+	    namespace = "urn:dslforum-org:service:DeviceInfo:1",
+	    handler = router_cb,
+	    opaque = index
+	 }
+	 local ns, meth, ent = soap_client.call(request)
       end
       return true
    else
@@ -809,6 +847,7 @@ local dlg = iup.dialog {
 	    rechner(5, false),
 	    rechner(6, false),
 	    rechner(7, false),
+	    rechner(8, false),
 	 },
 	 iup.vbox {
 	    gap = 10,
