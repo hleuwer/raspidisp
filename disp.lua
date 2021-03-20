@@ -287,7 +287,7 @@ local function rechner(index, check)
       return true
    else
       s = " wait ...     "
-      computers[index].label = iup.flatlabel{
+      computers[index].label = iup.label{
 	 font = "Courier New, 12",
 	 title = computers[index].dname .. s
       }
@@ -459,12 +459,11 @@ local function wetter(check)
 	 font = "Courier New, Bold 14",
 	 title = "  wait ...",
       }
-      
       weatherimage = iup.label{
 	 image = weatherImages["50d"],
       }
       local forecastcont = {}
-      for i = 1, 8 do
+      for i = 1, 7 do
 	 forecast[i] = iup.label{
 	    font = "Courier New, Bold 12",
 	    title = "  wait ...",
@@ -823,7 +822,7 @@ local function icon(which)
    end
    return icontab
 end
-
+local function bookmark_dialog() end
 -------------------------------------------------------------------------------
 -- This is the main dialog
 -------------------------------------------------------------------------------
@@ -834,38 +833,53 @@ local dlg = iup.dialog {
    minbox = no,
    resize = no,
    iup.vbox {
-      iup.hbox {
-	 gap = HGAP,
+      iup.tabs {
+	 tabtitle0 = "Dashboard",
+	 tabtitle1 = "Telefon",
+	 tabtitle2 = "Undefiniert",
+	 tabtype = "BOTTOM",
+	 taborientation = "HORIZONTAL",
+	 font = "Arial, 12",
+	 expand = yes,
 	 iup.vbox {
-	    gap = 3,
-	    margin = "5x5",
-	    icon("cam"),
-	    rechner(1, false),
-	    rechner(2, false),
-	    rechner(3, false),
-	    rechner(4, false),
-	    rechner(5, false),
-	    rechner(6, false),
-	    rechner(7, false),
-	    rechner(8, false),
-	 },
-	 iup.vbox {
-	    gap = 10,
-	    datum(false),
 	    iup.hbox {
-	       uhrzeit(false),
+	       gap = HGAP,
 	       iup.vbox {
-		  tempsensor(2, false),
-		  tempsensor(3, false),
-		  tempsensor(4, false)
-	       }
+		  gap = 3,
+		  margin = "5x5",
+		  icon("cam"),
+		  rechner(1, false),
+		  rechner(2, false),
+		  rechner(3, false),
+		  rechner(4, false),
+		  rechner(5, false),
+		  rechner(6, false),
+		  rechner(7, false),
+		  rechner(8, false),
+	       },
+	       iup.vbox {
+		  gap = 10,
+		  datum(false),
+		  iup.hbox {
+		     uhrzeit(false),
+		     iup.vbox {
+			tempsensor(2, false),
+			tempsensor(3, false),
+			tempsensor(4, false)
+		     }
+		  },
+		  wetter(false)
+	       },
 	    },
-	    wetter(false)
+	    iup.space {
+	       size="x2",
+	       expand = yes
+	    },
 	 },
-      },
-      iup.space {
-	 size="x2",
-	 expand = yes
+	 iup.vbox {
+	 },
+	 iup.vbox {
+	 }
       },
       iup.hbox {
 	 gap = 40,
@@ -875,7 +889,7 @@ local dlg = iup.dialog {
 	       gap = 0,
 	       status(false),
 	       statproc
-	    },
+	       },
 	    iup.button{
 	       title = "Schließen",
 	       font = "Arial, 12",
