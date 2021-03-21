@@ -67,6 +67,16 @@ local dtmaxlast = 0
 local cam = {}
 local camcontainer
 local last_status_update = 0
+
+--------------------------------------------------------------------------------
+-- Main Content
+local _content
+local function content(t)
+   _content =  iup.zbox(t)
+   _content.valuepos = 0
+   return _content
+end
+
 --------------------------------------------------------------------------------
 -- List of computers to check
 local computers = {
@@ -463,7 +473,7 @@ local function wetter(check)
 	 image = weatherImages["50d"],
       }
       local forecastcont = {}
-      for i = 1, 7 do
+      for i = 1, 8 do
 	 forecast[i] = iup.label{
 	    font = "Courier New, Bold 12",
 	    title = "  wait ...",
@@ -596,6 +606,22 @@ local screenButton = iup.button{
       else
 	 screenOn(self, true)
       end
+   end
+}
+
+-- Button that toggles through the contents
+local contentButton = iup.button{
+   title = "Inhalt",
+   font = "Arial, 12",
+   expand = horizontal,
+   tip = "Nächsten Inhalt sichtbar machen",
+   action = function(self)
+      if _content.valuepos == "2" then
+	 _content.valuepos = "0"
+      else
+	 _content.valuepos = tostring(tonumber(_content.valuepos) + 1)
+      end
+      
    end
 }
 
@@ -823,6 +849,7 @@ local function icon(which)
    return icontab
 end
 local function bookmark_dialog() end
+
 -------------------------------------------------------------------------------
 -- This is the main dialog
 -------------------------------------------------------------------------------
@@ -833,14 +860,7 @@ local dlg = iup.dialog {
    minbox = no,
    resize = no,
    iup.vbox {
-      iup.tabs {
-	 tabtitle0 = "Dashboard",
-	 tabtitle1 = "Telefon",
-	 tabtitle2 = "Undefiniert",
-	 tabtype = "BOTTOM",
-	 taborientation = "HORIZONTAL",
-	 font = "Arial, 12",
-	 expand = yes,
+      content {
 	 iup.vbox {
 	    iup.hbox {
 	       gap = HGAP,
@@ -877,14 +897,21 @@ local dlg = iup.dialog {
 	    },
 	 },
 	 iup.vbox {
+	    iup.label{
+	       title = "Content 2"
+	    }
 	 },
 	 iup.vbox {
+	    iup.label{
+	       title = "Content 3"
+	    }
 	 }
       },
       iup.hbox {
 	 gap = 40,
 	 iup.hbox {
 	    screenButton,
+	    contentButton,
 	    iup.vbox {
 	       gap = 0,
 	       status(false),
