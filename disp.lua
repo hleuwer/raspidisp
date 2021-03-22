@@ -9,6 +9,7 @@ local copas = require "copas"
 local asynchttp = require("copas.http").request
 local json = require "cjson"
 local socket = require "socket"
+local lxp = require "lxp.lom"
 
 --------------------------------------------------------------------------------
 -- We need this for decoding openweathermap.com json results correctly
@@ -31,6 +32,7 @@ log:info("Log started")
 --------------------------------------------------------------------------------
 -- Couple of generic constants and adjustments
 local format = string.format
+local tinsert = table.insert
 local yes, no = "YES", "NO"
 local vertical, horizontal = "VERTICAL", "HORIZONTAL"
 local HGAP, VGAP = 5, 5
@@ -78,6 +80,159 @@ local function content(t)
 end
 
 --------------------------------------------------------------------------------
+-- Alternate content: call list
+
+local _calls = iup.list{
+   visiblelines = 18,
+   minsize = "800x",
+   font = "Courier New, 12"
+}
+
+--------------------------------------------------------------------------------
+-- Call list handler.
+-- Runs as coroutine scheduled by copas.
+-- Performs asynchronous http request for call list.
+-- @param url URL of call list CGI script.
+-- @return none.
+--------------------------------------------------------------------------------
+local function callListHandler(url)
+   local function adj(s)
+      return s .. string.rep(" ", 25-#s)
+   end
+   log:info(format("reading call list from %q", url))
+   local res, err = asynchttp(url)
+   log:info(format("call list read result %s", err or "nil"))
+   if res == nil then
+      log:error("Cannot read call list %q", url)
+   end
+   local t = lxp.parse(res)
+   local r = {}
+   for i, v in ipairs(t) do
+      if type(v) == "table" then
+	 if v.tag == "Call" then
+	    local e = {}
+	    for j, w in ipairs(v) do
+	       if type(w) == "table" then
+		  e[w.tag] = w[1]
+	       end
+	    end
+	    tinsert(r, e)
+	 elseif v.tag == "timestamp" then
+	    r.timestamp = v[1]
+	    r.date = os.date(nil, tonumber(v[1]))
+	    end
+      end
+   end
+   local vin, vout, vnone = {},{},{}
+   local n_in, n_out, n_none = 0, 0, 0
+   for _, e in ipairs(r) do
+      if e.Type == "1" then
+	 -- incoming
+	 tinsert(vin, format("IN   %14s\t%-16s\t%5s\t%-16s",
+			      e.Date, adj(e.Name or e.Caller), e.Duration, e.Device))
+	 n_in = n_in + 1
+      elseif e.Type == "3" then
+	 -- outgoing
+	 tinsert(vout, format("OUT  %14s\t%-16s\t%5s\t%-16s",
+			      e.Date, adj(e.Name or e.Called), e.Duration, e.Device))
+	 n_out = n_out + 1
+      elseif e.Type == "2" then
+	 -- absent
+	 tinsert(vnone, format("NONE %14s\t%-16s\t%5s\t%-16s",
+			      e.Date, adj(e.Name or e.Caller), e.Duration, e.Device or "-"))
+	 n_none = n_none + 1
+      end
+   end
+   _calls.removeitem = "ALL"
+   for _, v in ipairs(vin) do
+      _calls.appenditem = v
+   end
+   return true
+end
+
+--------------------------------------------------------------------------------
+-- Call list callback.
+-- Executed once soap request completed.
+-- @param ns namespace of soap request.
+-- @param meth soap method table.
+-- @param ent result table.
+-- @param soap_headers soap request headers in table.
+-- @param body body of response.
+-- @param magic opaque value from request.
+-- @return true.
+--------------------------------------------------------------------------------
+local function calls_cb(ns, meth, ent, soap_headers, body, magic)
+   local url = ent[2][1]
+   log:info(format("call list URL: %q", ent[2][1]))
+   url = string.gsub(url, "%[(.+)%]", "fritz7590")
+   local res, err = copas.addthread(callListHandler, url)
+   if not res then
+      log:error(format("lauching call list request failed with %q", err))
+   end
+   return true
+end
+
+--------------------------------------------------------------------------------
+-- Call list action.
+-- @param check false: return GUI element; true: update GUI element
+-- @return GUI element if check == false; nothing otherwise
+--------------------------------------------------------------------------------
+local function calls(check)
+   if check == true then
+      local request =  {
+	 auth = "digest",
+	 soapaction = "urn:dslforum-org:service:X_AVM-DE_OnTel:1#GetCallList",
+	 method = "GetCallList",
+	 namespace = "urn:dslforum-org:service:X_AVM-DE_OnTel:1",
+	 url = "http://leuwer:herbie#220991@fritz7590:49000/upnp/control/x_contact",
+	 entries = {
+	    tag = "u:GetCallList"
+	 },
+	 handler = calls_cb,
+	 opaque = "call-list"
+      }
+      soap_client.call(request)
+   else
+      local ret = iup.vbox {
+	 iup.frame {
+	    iup.hbox {
+	       gap = 20, 
+	       iup.label{
+		  title = "Anrufliste",
+		  font = "Arial, 14"
+	       },
+	       iup.button {
+		  title = "Abholen",
+		  font = "Arial, 12",
+		  action = function(self)
+		     calls(true)
+		  end
+	       }
+	    }
+	 },
+	 _calls,
+      }
+      return ret
+   end
+end
+
+--------------------------------------------------------------------------------
+-- Button that toggles through the contents
+local contentButton = iup.button{
+   title = "Inhalt",
+   font = "Arial, 12",
+   expand = horizontal,
+   tip = "Nächsten Inhalt sichtbar machen",
+   action = function(self)
+      if _content.valuepos == "1" then
+	 _content.valuepos = "0"
+      else
+	 _content.valuepos = tostring(tonumber(_content.valuepos) + 1)
+      end
+   end
+}
+
+--------------------------------------------------------------------------------
 -- List of computers to check
 local computers = {
 --   {dname = "fritzbox .... ", hname = "fritz.box"},
@@ -91,6 +246,8 @@ local computers = {
    {dname = "maclinux  :", hname = "maclinux", reqtype = "snmp"}
    
 }
+
+--------------------------------------------------------------------------------
 -- Create an SNMP session for each computer
 for _, v in ipairs(computers) do
    if v.reqtype == "snmp" then
@@ -433,7 +590,7 @@ local lastWeather
 -- Weather data response handler.
 -- @return none.
 --------------------------------------------------------------------------------
-local function weatherHandler()
+local function weatherHandler(url)
    local res, err = asynchttp(url)
    log:debug(format("weather result received: json=%s", "xx" or res))
    if res ~= nil then
@@ -606,22 +763,6 @@ local screenButton = iup.button{
       else
 	 screenOn(self, true)
       end
-   end
-}
-
--- Button that toggles through the contents
-local contentButton = iup.button{
-   title = "Inhalt",
-   font = "Arial, 12",
-   expand = horizontal,
-   tip = "Nächsten Inhalt sichtbar machen",
-   action = function(self)
-      if _content.valuepos == "2" then
-	 _content.valuepos = "0"
-      else
-	 _content.valuepos = tostring(tonumber(_content.valuepos) + 1)
-      end
-      
    end
 }
 
@@ -848,6 +989,7 @@ local function icon(which)
    end
    return icontab
 end
+
 local function bookmark_dialog() end
 
 -------------------------------------------------------------------------------
@@ -861,6 +1003,7 @@ local dlg = iup.dialog {
    resize = no,
    iup.vbox {
       content {
+	 -- CONTENT 1: measurements
 	 iup.vbox {
 	    iup.hbox {
 	       gap = HGAP,
@@ -896,16 +1039,16 @@ local dlg = iup.dialog {
 	       expand = yes
 	    },
 	 },
+	 -- CONTENT 2: call list
 	 iup.vbox {
-	    iup.label{
-	       title = "Content 2"
-	    }
+	    calls(false),
 	 },
-	 iup.vbox {
-	    iup.label{
-	       title = "Content 3"
-	    }
-	 }
+	 -- CONTENT 3: not used now
+--	 iup.vbox {
+--	    iup.label{
+--	       title = "Content 3"
+--	    }
+--	 }
       },
       iup.hbox {
 	 gap = 40,
