@@ -34,6 +34,7 @@ log:info("Log started")
 local format = string.format
 local tinsert = table.insert
 local yes, no = "YES", "NO"
+local on, off = "ON", "OFF"
 local vertical, horizontal = "VERTICAL", "HORIZONTAL"
 local HGAP, VGAP = 5, 5
 local wdays = {
@@ -80,12 +81,69 @@ local function content(t)
 end
 
 --------------------------------------------------------------------------------
+-- Some predefined GUI elements
+local luaicon = iup.LoadImage("/usr/local/share/luanagios/img/luanagios.png")
+
+local sbutton = iup.button{
+   title = scstate,
+   tip = "Schalte Bildschirm hell oder dunkel",
+   action = function(self) os.exit(0) end
+}
+
+local statproc = iup.label{
+   font = "Arial, 10",
+   title = "  start ..."
+}
+
+local function putStatus(s)
+   statproc.title = s
+   last_status_update = os.time()
+end
+
+--------------------------------------------------------------------------------
 -- Alternate content: call list
 
 local _calls = iup.list{
    visiblelines = 18,
    minsize = "800x",
-   font = "Courier New, 12"
+   font = "Courier New, 11",
+   rebuild = function(self, vall)
+      self.items = vall
+      self.removeitem = "ALL"
+      for _, v in ipairs(vall) do
+	 if string.sub(v, 1, 2) == "IN" and togCallIn.value == on then
+	    self.appenditem = v
+	 elseif string.sub(v, 1, 3) == "OUT" and togCallOut.value == on then
+	    self.appenditem = v
+	 elseif string.sub(v, 1, 4) == "NONE" and togCallNone.value == on then
+	    self.appenditem = v
+	 end
+      end
+   end
+}
+
+local function togCallback(self)
+   log:info(format("toggled callist %q to %s", self.title, self.value))
+   return self.calls:rebuild(self.calls.items)
+end
+
+togCallIn = iup.toggle {
+   title = "eingehend",
+   value = on,
+   calls = _calls,
+   valuechanged_cb = togCallback
+}
+togCallOut = iup.toggle {
+   title = "ausgehend",
+   value = off,
+   calls = _calls,
+   valuechanged_cb = togCallback
+}
+togCallNone = iup.toggle {
+   title = "unerreicht",
+   value = off,
+   calls = _calls,
+   valuechanged_cb = togCallback
 }
 
 --------------------------------------------------------------------------------
@@ -123,30 +181,27 @@ local function callListHandler(url)
 	    end
       end
    end
-   local vin, vout, vnone = {},{},{}
+   local vall = {}
    local n_in, n_out, n_none = 0, 0, 0
    for _, e in ipairs(r) do
       if e.Type == "1" then
 	 -- incoming
-	 tinsert(vin, format("IN   %14s\t%-16s\t%5s\t%-16s",
+	 tinsert(vall, format("IN   %14s\t%-s\t%5s\t%-16s",
 			      e.Date, adj(e.Name or e.Caller), e.Duration, e.Device))
 	 n_in = n_in + 1
       elseif e.Type == "3" then
 	 -- outgoing
-	 tinsert(vout, format("OUT  %14s\t%-16s\t%5s\t%-16s",
+	 tinsert(vall, format("OUT  %14s\t%-s\t%5s\t%-16s",
 			      e.Date, adj(e.Name or e.Called), e.Duration, e.Device))
 	 n_out = n_out + 1
       elseif e.Type == "2" then
 	 -- absent
-	 tinsert(vnone, format("NONE %14s\t%-16s\t%5s\t%-16s",
+	 tinsert(vall, format("NONE %14s\t%-s\t%5s\t%-16s",
 			      e.Date, adj(e.Name or e.Caller), e.Duration, e.Device or "-"))
 	 n_none = n_none + 1
       end
    end
-   _calls.removeitem = "ALL"
-   for _, v in ipairs(vin) do
-      _calls.appenditem = v
-   end
+   _calls:rebuild(vall)
    return true
 end
 
@@ -191,6 +246,7 @@ local function calls(check)
 	 handler = calls_cb,
 	 opaque = "call-list"
       }
+      putStatus(format("  retrieving call list ..."))
       soap_client.call(request)
    else
       local ret = iup.vbox {
@@ -207,7 +263,10 @@ local function calls(check)
 		  action = function(self)
 		     calls(true)
 		  end
-	       }
+	       },
+	       togCallIn,
+	       togCallOut,
+	       togCallNone,
 	    }
 	 },
 	 _calls,
@@ -219,15 +278,18 @@ end
 --------------------------------------------------------------------------------
 -- Button that toggles through the contents
 local contentButton = iup.button{
-   title = "Inhalt",
+   title = "Anrufe",
    font = "Arial, 12",
    expand = horizontal,
    tip = "Nächsten Inhalt sichtbar machen",
    action = function(self)
       if _content.valuepos == "1" then
 	 _content.valuepos = "0"
+	 self.title = "Anrufe"
       else
 	 _content.valuepos = tostring(tonumber(_content.valuepos) + 1)
+	 self.title = "Messwerte"
+	 calls(true)
       end
    end
 }
@@ -294,26 +356,6 @@ for i,v in ipairs(weatherImageNames) do
    forecastImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/PNG/"..
 				     weatherImageFiles[v])
    forecastImages[v].resize = "32x32"
-end
-
---------------------------------------------------------------------------------
--- Some predefined GUI elements
-local luaicon = iup.LoadImage("/usr/local/share/luanagios/img/luanagios.png")
-
-local sbutton = iup.button{
-   title = scstate,
-   tip = "Schalte Bildschirm hell oder dunkel",
-   action = function(self) os.exit(0) end
-}
-
-local statproc = iup.label{
-   font = "Arial, 10",
-   title = "  start ..."
-}
-
-local function putStatus(s)
-   statproc.title = s
-   last_status_update = os.time()
 end
 
 -- SMB: do not use - NFS seems more stable
@@ -522,7 +564,7 @@ local function temp_cb(vb, err, index, reqid, sess, magic)
       tempsens[magic].title = format("Temp %d: %+5.1f °C", magic, vb.value) 
    else
       -- log error
-      log:error(format("temp_cb() error %d", err))
+      log:error(format("temp_cb() error %s", err or "???"))
    end
 end
 
@@ -541,8 +583,8 @@ local function tempsensor(index, check)
       return tempsens[index]
    else
       putStatus(format("  check temperature %d ...", index))
-	 local ret, err = tempsess:asynch_get("extOutput."..index, temp_cb, index)
-	 return true
+      local ret, err = tempsess:asynch_get("extOutput."..index, temp_cb, index)
+      return true
    end
 end
 
