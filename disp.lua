@@ -10,7 +10,12 @@ local asynchttp = require("copas.http").request
 local json = require "cjson"
 local socket = require "socket"
 local lxp = require "lxp.lom"
-
+local _USER = "leuwer"
+local fn = os.getenv("HOME").."/.passwd"
+local fin=assert(io.open(fn, "r"))
+local _PASSWORD = fin:read("*l")
+fin:close()
+print(_USER, _PASSWORD)
 --------------------------------------------------------------------------------
 -- We need this for decoding openweathermap.com json results correctly
 os.setlocale("de_DE.UTF-16")
@@ -239,7 +244,7 @@ local function calls(check)
 	 soapaction = "urn:dslforum-org:service:X_AVM-DE_OnTel:1#GetCallList",
 	 method = "GetCallList",
 	 namespace = "urn:dslforum-org:service:X_AVM-DE_OnTel:1",
-	 url = "http://leuwer:herbie#220991@fritz7590:49000/upnp/control/x_contact",
+	 url = "http://".._USER..":".._PASSWORD.."@fritz7590:49000/upnp/control/x_contact",
 	 entries = {
 	    tag = "u:GetCallList"
 	 },
@@ -478,7 +483,7 @@ local function rechner(index, check)
 	    computers[index].label.title = computers[index].dname .. " down"
 	 end
       elseif computers[index].reqtype == "soap" then
-	 local user, pw = "leuwer", "herbie#220991"
+	 local user, pw = _USER, _PASSWORD
 	 local request = {
 	    soapaction = "urn:dslforum-org:service:DeviceInfo:1#GetInfo",
 	    url = "http://"..user..":"..pw.."@fritz.box:49000/upnp/control/deviceinfo",
@@ -1053,6 +1058,9 @@ local dlg = iup.dialog {
 		  gap = 3,
 		  margin = "5x5",
 		  icon("cam"),
+		  iup.space{
+		     size = "x5"
+		  },
 		  rechner(1, false),
 		  rechner(2, false),
 		  rechner(3, false),
