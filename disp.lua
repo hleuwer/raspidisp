@@ -385,9 +385,14 @@ local function copyCam()
    local s
    local t0 = os.time()
    repeat
-      local fi = assert(io.open(wb_fname,"rb"))
-      s = fi:read("*a")
-      fi:close()
+      --      local fi = assert(io.open(wb_fname,"rb"))
+      local status, fi = pcall(io.open, wb_fname, "rb")
+      if status == true then
+	 status, s = pcall(fi.read, fi, "*a")
+	 if status == true then
+	    fi:close()
+	 end
+      end
       if os.time() - t0 > 5 then
 	 log:error(format("read timeout %d sec", os.time() - t0))
 	 s = nil
