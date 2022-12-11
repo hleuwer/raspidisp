@@ -15,7 +15,8 @@ local fn = os.getenv("HOME").."/.passwd"
 local fin=assert(io.open(fn, "r"))
 local _PASSWORD = fin:read("*l")
 fin:close()
-print(_USER, _PASSWORD)
+--print(_USER, _PASSWORD)
+--iup.SetGlobal("IUPLUA_THREADED", "1")
 --------------------------------------------------------------------------------
 -- We need this for decoding openweathermap.com json results correctly
 os.setlocale("de_DE.UTF-16")
@@ -60,13 +61,24 @@ local onoff = {
 --------------------------------------------------------------------------------
 -- Variables
 local screenOn = true
+local update = {
+   datum = true,
+   uhrzeit = true,
+   wetter = true,
+   tempsensor = true,
+   rechner = true,
+   status = true,
+   webcam = true,
+   kalender = true
+}
 local clock
 local date
 local cal
 local weather, weatherimage
 local forecast, forecastimage = {}, {}
 local screensize =  iup.GetGlobal("SCREENSIZE")
-local screensize = "810 x 490"
+log:debug("screensize: "..screensize)
+--local screensize = "810 x 490"
 local cnt, mcnt = 1, 1200
 local statcount, statscreen, statgc
 local tempsens = {}
@@ -75,6 +87,28 @@ local dtmaxlast = 0
 local cam = {}
 local camcontainer
 local last_status_update = 0
+
+
+
+--------------------------------------------------------------------------------
+-- Fonts
+local fonts = {
+   headline = "Arial, 12",
+   list = "Courier New, 11",
+   standard = "Arial, 10",
+   clock = "Arial, Bold, 48",
+   datum = "Arial, 36",
+   temp = "Arial, 12",
+   weather = "Courier New, 11",
+   kalender = "Courier New, 10",
+   forecast = "Courire, 12",
+   status = "Courier New, 8",
+   button = "Arial, 9"
+}
+
+--------------------------------------------------------------------------------
+-- Local weather context
+local lastWeather
 
 --------------------------------------------------------------------------------
 -- Main Content
@@ -91,13 +125,15 @@ local luaicon = iup.LoadImage("/usr/local/share/luanagios/img/luanagios.png")
 
 local sbutton = iup.button{
    title = scstate,
+   font = fonts.button,
    tip = "Schalte Bildschirm hell oder dunkel",
    action = function(self) os.exit(0) end
 }
 
 local statproc = iup.label{
-   font = "Arial, 10",
-   title = "  start ..."
+      font = fonts.status,
+      expand = horizontal,
+      title = "  start ..."
 }
 
 local function putStatus(s)
@@ -111,7 +147,7 @@ end
 local _calls = iup.list{
    visiblelines = 18,
    minsize = "800x",
-   font = "Courier New, 11",
+   font = fonts.list,
    rebuild = function(self, vall)
       self.items = vall
       self.removeitem = "ALL"
@@ -260,11 +296,11 @@ local function calls(check)
 	       gap = 20, 
 	       iup.label{
 		  title = "Anrufliste",
-		  font = "Arial, 14"
+		  font = fonts.headline
 	       },
 	       iup.button {
 		  title = "Abholen",
-		  font = "Arial, 12",
+		  font = fonts.button,
 		  action = function(self)
 		     calls(true)
 		  end
@@ -284,7 +320,7 @@ end
 -- Button that toggles through the contents
 local contentButton = iup.button{
    title = "Anrufe",
-   font = "Arial, 12",
+   font = fonts.button,
    expand = horizontal,
    tip = "Nächsten Inhalt sichtbar machen",
    action = function(self)
@@ -304,7 +340,7 @@ local contentButton = iup.button{
 local computers = {
 --   {dname = "fritzbox .... ", hname = "fritz.box"},
    {dname = "fritz7590 :", hname = "macbookpro", reqtype = "soap"},
-   {dname = "macbookpro:", hname = "macbookpro", reqtype = "snmp"},
+   {dname = "macbookpro:", hname = "macbookpro.local", reqtype = "snmp"},
    {dname = "raspi 1   :", hname = "raspberrypi1", reqtype = "snmp"},
    {dname = "raspi 2   :", hname = "raspberrypi2", reqtype = "snmp"},
    {dname = "raspi 3   :", hname = "raspberrypi3", reqtype = "snmp"},
@@ -357,7 +393,7 @@ local tempsess = snmp.open{peer="raspberrypi4"}
 for i,v in ipairs(weatherImageNames) do
    weatherImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/PNG/"..
 				    weatherImageFiles[v])
-   weatherImages[v].resize = "40x40"
+   weatherImages[v].resize = "32x32"
    forecastImages[v] = iup.LoadImage("/usr/local/share/luanagios/img/PNG/"..
 				     weatherImageFiles[v])
    forecastImages[v].resize = "32x32"
@@ -367,20 +403,25 @@ end
 -- local wb_fname = "/mnt/pi4disk/dev/shm/mjpeg/cam.jpg"
 -- NFS:
 local wb_fname = "/net/nfs/mjpeg/cam.jpg"
-local lwb_fname = "/dev/shm/mjpeg/cam.jpg"
+local lwb_fname = "/mnt/mjpeg/cam.jpg"
+--local lwb_fname = "/dev/shm/mjpeg/cam.jpg"
 
 --------------------------------------------------------------------------------
 -- URL for weather data
 local fin = assert(io.open("/home/leuwer/.appid", "r"))
 local appid = fin:read("*l")
 local url = "http://api.openweathermap.org/data/2.5/onecall?lat=54.05&lon=10.08&lang=de&units=metric&appid="..appid
---log:debug("URL: " .. url)
-
+local url_ = "http://api.openweathermap.org/data/2.5/weather?lat=52.52&lon=13.41&lang=de&units=metric&appid=c3454c3a68e2abd6d7e86471b429686e"
+fin:close()
+log:debug("URL: " .. url)
 
 --------------------------------------------------------------------------------
 -- Copy webcam image to local ramdisk
 -- @return none.
 --------------------------------------------------------------------------------
+local function _copyCam()
+end
+
 local function copyCam()
    local s
    local t0 = os.time()
@@ -438,7 +479,7 @@ end
 --------------------------------------------------------------------------------
 local function rechner_cb(vb, err, index, reqid, sess, magic)
    if vb and vb.value then
-      log:debug(format("rechner_cb() ok %s for rechner %q",
+      log:debug(format("rechner_cb(): ok %s for rechner %q",
 		       pretty.write(vb,""),
 		       computers[magic].hname))
       computers[magic].label.title =
@@ -507,7 +548,7 @@ local function rechner(index, check)
    else
       s = " wait ...     "
       computers[index].label = iup.label{
-	 font = "Courier New, 12",
+         font = fonts.list,
 	 title = computers[index].dname .. s
       }
       return computers[index].label
@@ -525,7 +566,7 @@ local function datum(check)
    local t = os.date("*t")
    if check == false then
       date = iup.label{
-	 font = "Arial, Bold 32",
+	 font = fonts.datum,
 	 title = format("%s, %02d.%02d.%04d",
 			       wdays[t.wday], t.day, t.month, t.year)
       }
@@ -548,12 +589,12 @@ local function uhrzeit(check)
    local t = os.date("*t")
    if check == false then
       clock = iup.label{
-	 font = "Arial, Bold 48",
+	 font = fonts.clock,
 	 title = format("%02d:%02d:%02d", t.hour, t.min, t.sec)
       }
       return clock
    else
-      log:debug("updating time ...")
+      log:debug("uhrzeit(): updating time ...")
       clock.title = format("%02d:%02d:%02d", t.hour, t.min, t.sec)
       return true
    end
@@ -570,8 +611,10 @@ end
 --------------------------------------------------------------------------------
 local function temp_cb(vb, err, index, reqid, sess, magic)
    if vb then
-      log:debug(format("temp_cb(): %s for sensor %d", tostring(vb), magic))
-      tempsens[magic].title = format("Temp %d: %+5.1f °C", magic, vb.value) 
+      log:debug("temp_cb(): "..tostring(vb).." "..tostring(magic))
+      log:debug(format("temp_cb(): %s for sensor %s", tostring(vb), tostring(magic)))
+--      tempsens[magic].title = format("Temp %s: %+5.1f °C", tostring(magic), vb.value) 
+      tempsens[magic].title = format("Temp %s: %8s °C", tostring(magic), vb.value) 
    else
       -- log error
       log:error(format("temp_cb() error %s", err or "???"))
@@ -587,8 +630,8 @@ end
 local function tempsensor(index, check)
    if check == false then
       tempsens[index] = iup.label{
-	    font = "Arial, Bold 12",
-	    title = format("Temp %d: wait ...", index)
+	    font = fonts.temp,
+	    title = format("Temp %d: wait ...          ", index)
 	 }
       return tempsens[index]
    else
@@ -605,7 +648,6 @@ end
 --------------------------------------------------------------------------------
 local function getWeather()
    local res, err = asynchttp(url)
-   log:debug(res)
    return res
 end
 
@@ -615,17 +657,21 @@ end
 -- @return none.
 --------------------------------------------------------------------------------
 local function updateWeather(t)
+   log:debug(format("updateWeather(): updating weather: %s", pretty.write(t))) 
    weather.title = format("  %+3.1f °C - %d %% - %s",
 			  t.current.temp, t.current.humidity,
 			  t.current.weather[1].description)
    weatherimage.image = weatherImages[t.current.weather[1].icon]
+--   log:debug(format("daily: %", pretty.write(t.daily)))
    for k, u in ipairs(t.daily) do
+--      log:debug(format("k=%d u=%s", k, pretty.write(u,"")))
       if opt.weather.showPressure == true then
    	 forecast[k].title = format(" %s: %+5.1f °C %4d hPa - %s",
 				    os.date("%d.%m", u.dt),
 				    u.temp.day,
 				    u.pressure,
 				    u.weather[1].description)
+	 log:debug(format("forecast %d %s", k, forecast[k].title))
       else
 	 forecast[k].title = format(" %s: %+5.1f °C %5s %5s %s",
 				    os.date("%d.%m", u.dt),
@@ -633,21 +679,22 @@ local function updateWeather(t)
 				    os.date("%H:%M", u.sunrise),
 				    os.date("%H:%M", u.sunset),
 				    u.weather[1].description)
+	 log:debug(format("forecast %d %s", k, forecast[k].title))
       end
-	 forecastimage[k].image = forecastImages[u.weather[1].icon]
+      forecastimage[k].image = forecastImages[u.weather[1].icon]
    end
 end
-local lastWeather
 --------------------------------------------------------------------------------
 -- Weather data response handler.
 -- @return none.
 --------------------------------------------------------------------------------
 local function weatherHandler(url)
+   local t
    local res, err = asynchttp(url)
-   log:debug(format("weather result received: json=%s", "xx" or res))
+   log:debug(format("weatherHandler(): weather result received: json=%s err=%q", res, err))
    if res ~= nil then
       t = json.decode(res)
-      log:debug(format("weather result decoded: lua=%s", "yy" or pretty.write(t,"")))
+      log:debug(format("weatherHandler(): weather result decoded: lua=%s %s", pretty.write(t), tostring(t)))
       if t ~= nil then
 	 updateWeather(t)
 	 lastWeather = t
@@ -667,15 +714,16 @@ local function wetter(check)
    local stat, s, t
    if check == true then
       putStatus("  check weather ...")
-      log:debug(format("launching weather request %s", url))
+      log:debug(format("wetter(): launching weather request %s", url))
       local res, err = copas.addthread(weatherHandler, url)
       if not res then
-	 log:error(format("launching weather request failed with %q", err))
+	 log:error(format("wetter(): launching weather request failed with %q", err))
       end
       return true
    else
       weather = iup.label{
-	 font = "Courier New, Bold 14",
+	 font = fonts.forecast,
+	 expand = yes,
 	 title = "  wait ...",
       }
       weatherimage = iup.label{
@@ -684,7 +732,8 @@ local function wetter(check)
       local forecastcont = {}
       for i = 1, 8 do
 	 forecast[i] = iup.label{
-	    font = "Courier New, Bold 12",
+	    font = fonts.forecast,
+	    expand = yes,
 	    title = "  wait ...",
 	 }
 	 forecastimage[i] = iup.label{
@@ -739,6 +788,7 @@ end
 local function webcam(check)
    if check == true then
       local img
+      log:debug("webcam(): updating webcam")
       if camix == 0 then
 	 -- pic 0 is visible: make 1 visible and load into 0
 	 camcontainer.valuepos = 1
@@ -806,7 +856,7 @@ end
 -- Button to turn screen backlight on or off
 local screenButton = iup.button{
    title = "Dunkel",
-   font = "Arial, 12",
+   font = fonts.button,
    expand = horizontal,
    tip = "Schalte Bildschirm dunkel und wieder hell",
    action = function(self)
@@ -829,24 +879,26 @@ local function status(check)
    local sstat
    if check == false then
       statcount = iup.label{
-	 font = "Arial, 10",
+	 font = fonts.status,
 	 title = format("%5d", 0)
       }
       statscreen = iup.label{
-	 font = "Arial, 10",
+	 font = fonts.status,
 	 title = "---"
       }
       statgc = iup.label{
-	 font = "Arial, 10",
+	 font = fonts.status,
 	 title = "---- kB"
       }
       return iup.hbox{
-	 gap = 40,
+	 gap = 10,
 	 statscreen, statcount, statgc
       }
    else
+      log:debug("status(): updating status")
       if os.time() - last_status_update > 5 then
 	 putStatus("")
+	 log:debug("status(): time:"..os.time())
       end
       statcount.title = format("%5d", mcnt)
       sstat = isScreenOn()
@@ -897,11 +949,12 @@ end
 local function kalender(check)
    if check == true then
       cal.value = "TODAY"
+      log:debug("kalender(): updating kalender")
       return true
    else
       cal = iup.calendar{
 	 weeknumbers = yes,
-	 font = "Courier, Bold 12",
+	 font = fonts.kalender,
 	 value = "TODAY",
 	 bgcolor = "50 50 50"
       }
@@ -915,7 +968,7 @@ end
 local show_sunrise = iup.toggle{
    title = "Sonnenauf- u. Untergang",
    tip = "Zeige Sonnenaufgang und -untergang in Wettervorhersage",
-   font = "Arial, 10",
+   font = fonts.standard,
    flat = yes,
    action = function(v)
       opt.weather.showPressure = false
@@ -926,7 +979,7 @@ local show_sunrise = iup.toggle{
 local show_pressure = iup.toggle{
    title = "Luftdruck",
    tip = "zeige Luftdurck in Wettervorhersage",
-   font = "Arial, 10",
+   font = fonts.standard,
    flat = yes,
    action = function(v)
       opt.weather.showPressure = true
@@ -937,7 +990,7 @@ local show_pressure = iup.toggle{
 local show_toggle = iup.toggle{
    title = "Wechsel",
    tip = "Wechsel zwischen Sonnenaufgang/-untergang und Luftdruck",
-   font = "Arial, 10",
+   font = fonts.standard,
    flat = yes,
    action = function(v)
       opt.weather.showPressure = false
@@ -966,7 +1019,7 @@ local function icon(which)
    icontab = iup.tabs{
       alignment = "CENTER",
       bgcolor = "52 57 59",
-      font = "Arial, 12",
+      font = fonts.standard,
       childoffset = "5x10",
       tabpadding = "5x5",
       iup.flatframe{
@@ -993,8 +1046,8 @@ local function icon(which)
 	    },
 	    iup.button{
 	       title = "Temperatur    ",
-	       font = "Arial, 10",
-	       flat = yes,
+	       font = fonts.button,
+--	       flat = yes,
 	       size = "80x",
 	       tip = "Rufe Temperatur ab",
 	       action = function(self)
@@ -1005,18 +1058,18 @@ local function icon(which)
 	    },
 	    iup.button{
 	       title = "Wetter abrufen",
-	       font = "Arial, 10",
-	       flat = yes,
+	       font = fonts.button,
+--	       flat = yes,
 	       tip = "Rufe Wetter ab",
 	       size = "80x",
 	       action = function(self) wetter(true) end
 	    },
 	    iup.button{
 	       title = "Prüfe Rechner ",
-	       font = "Arial, 10",
-	       flat = yes,
+	       font = fonts.button,
+--	       flat = yes,
 	       size = "80x",
-	       tip = "Profe alle Rechner",
+	       tip = "Prüfe alle Rechner",
 	       action = function(self)
 		  for i = 1, #computers do
 		     rechner(i, true)
@@ -1066,6 +1119,8 @@ local dlg = iup.dialog {
 		  iup.space{
 		     size = "x5"
 		  },
+		  iup.label{font = fonts.list, titele = ""},
+		  iup.label{font = fonts.list, title = "Computer:"},
 		  rechner(1, false),
 		  rechner(2, false),
 		  rechner(3, false),
@@ -1076,11 +1131,13 @@ local dlg = iup.dialog {
 		  rechner(8, false),
 	       },
 	       iup.vbox {
-		  gap = 10,
+		  gap = 5,
 		  datum(false),
 		  iup.hbox {
 		     uhrzeit(false),
+		     iup.space{size="x2", expand=yes},
 		     iup.vbox {
+			iup.space{size="x1", expand=yes},
 			tempsensor(2, false),
 			tempsensor(3, false),
 			tempsensor(4, false)
@@ -1105,23 +1162,31 @@ local dlg = iup.dialog {
 --	    }
 --	 }
       },
-      iup.hbox {
-	 gap = 40,
+      iup.vbox {
 	 iup.hbox {
-	    screenButton,
-	    contentButton,
-	    iup.vbox {
-	       gap = 0,
-	       status(false),
-	       statproc
+	    gap = 40,
+	    iup.hbox {
+	       screenButton,
+	       contentButton,
+	       iup.vbox {
+		  gap = 0,
+		  status(false),
+		  iup.hbox{
+		     statproc,
+		     expand = yes
+		  }
 	       },
-	    iup.button{
-	       title = "Schließen",
-	       font = "Arial, 12",
-	       expand = horizontal,
-	       tip = "Verlasse das Programm",
-	       action = function(self) os.exit(0) end
+	       iup.button{
+		  title = "Schließen",
+		  font = fonts.button,
+		  expand = horizontal,
+		  tip = "Verlasse das Programm",
+		  action = function(self) os.exit(0) end
+	       }
 	    }
+	 },
+	 iup.hbox {
+	    margin = "x3"
 	 }
       }
    }
@@ -1137,39 +1202,57 @@ local calTrig = 0
 local timer = iup.timer{
    time = 500,
    action_cb = function(self)
-
+      if false  then
+	 return
+      end
       -- 300 second interval - 5 minutes
-      if cnt % (600) == 10 then
-	 for i = 1, #computers do
-	    rechner(i, true)
+      if update.rechner then
+	 if cnt % (600) == 10 then
+	    for i = 1, #computers do
+	       rechner(i, true)
+	    end
 	 end
       end
 
       -- 600 second interval - 10  minutes
       if cnt % (1200) == 12 then
-	 wetter(true)
-	 mcnt = 1200
+	 if update.wetter then
+	    wetter(true)
+	    mcnt = 1200
+	 end
       end
 
       -- every 0.5 seconds: collect garbage
       collectgarbage("collect")
 
       -- 30 seconds update temperatures
-      if cnt % 60 == 8 then
-	 for i = 2, 4 do
-	    tempsensor(i, true)
+      if update.tempsensor then
+	 if cnt % 60 == 8 then
+	    for i = 2, 4 do
+	       tempsensor(i, true)
+	    end
 	 end
       end
 
       -- every 0.5 seconds: data, time, calendar, webcam, status
       local t = os.date("*t")
-      uhrzeit(true)
-      datum(true)
+      if update.uhrzeit then
+	 uhrzeit(true)
+      end
+      if update.datum then
+	 datum(true)
+      end
+      if update.kalender then
       kalender(true)
-      webcam(true)
-      status(true)
+      end
+      if update.webcam then
+	 webcam(true)
+      end
+      if update.status then
+	 status(true)
+      end
       cnt = cnt + 1
-
+--      log:debug("counter: "..cnt)
       -- we display this counter in the status line
       mcnt = mcnt - 1
       
@@ -1188,7 +1271,9 @@ local timer = iup.timer{
       if cnt % 60 == 0 then
 	 if opt.weather.togglePressure == true then
 	    opt.weather.showPressure = not opt.weather.showPressure
-	    updateWeather(lastWeather)
+	    if update.wetter then
+	       updateWeather(lastWeather)
+	    end
 	 end
       end
 
@@ -1207,6 +1292,7 @@ local timer = iup.timer{
       
       -- update status
       sbutton.title = checkOnOff(screenButton, t)
+      copas.step()
    end
 }
 
@@ -1222,5 +1308,8 @@ local timerSnmp = iup.timer{
 }
 timerSnmp.run = yes
 timer.run = yes
-
+--while true do
+--   iup.LoopStep()
+--   copas.step(0)
+--end
 iup.MainLoop()
