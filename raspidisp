@@ -1,2 +1,3 @@
 #!/bin/sh
+source /home/leuwer/bin/lua.bash
 cd /home/leuwer/git/raspidisp.git; lua disp.lua

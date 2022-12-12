@@ -77,8 +77,9 @@ local cal
 local weather, weatherimage
 local forecast, forecastimage = {}, {}
 local screensize =  iup.GetGlobal("SCREENSIZE")
-log:debug("screensize: "..screensize)
+log:info("screensize: "..screensize)
 --local screensize = "810 x 490"
+local screensize = "814 x 490"
 local cnt, mcnt = 1, 1200
 local statcount, statscreen, statgc
 local tempsens = {}
@@ -98,10 +99,10 @@ local fonts = {
    standard = "Arial, 10",
    clock = "Arial, Bold, 48",
    datum = "Arial, 36",
-   temp = "Arial, 12",
+   temp = "Courier New, 12",
    weather = "Courier New, 11",
    kalender = "Courier New, 10",
-   forecast = "Courire, 12",
+   forecast = "Courier New, 12",
    status = "Courier New, 8",
    button = "Arial, 9"
 }
@@ -614,7 +615,7 @@ local function temp_cb(vb, err, index, reqid, sess, magic)
       log:debug("temp_cb(): "..tostring(vb).." "..tostring(magic))
       log:debug(format("temp_cb(): %s for sensor %s", tostring(vb), tostring(magic)))
 --      tempsens[magic].title = format("Temp %s: %+5.1f °C", tostring(magic), vb.value) 
-      tempsens[magic].title = format("Temp %s: %8s °C", tostring(magic), vb.value) 
+      tempsens[magic].title = format("Temp %s: %6s °C", tostring(magic), vb.value) 
    else
       -- log error
       log:error(format("temp_cb() error %s", err or "???"))
@@ -1164,7 +1165,8 @@ local dlg = iup.dialog {
       },
       iup.vbox {
 	 iup.hbox {
-	    gap = 40,
+	    gap = 5,
+	    iup.space{size="2x",expand=no},
 	    iup.hbox {
 	       screenButton,
 	       contentButton,
@@ -1182,7 +1184,8 @@ local dlg = iup.dialog {
 		  expand = horizontal,
 		  tip = "Verlasse das Programm",
 		  action = function(self) os.exit(0) end
-	       }
+	       },
+	       iup.space{rastersize="2x",expand=no},
 	    }
 	 },
 	 iup.hbox {
