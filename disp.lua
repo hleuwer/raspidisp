@@ -1,10 +1,26 @@
+--- We start logging early for debug purposes
+logging = require "logging"
+require "logging.file"
+
+local format = string.format
+--------------------------------------------------------------------------------
+-- Logging stuff
+local log = logging.file("/tmp/disp.log")
+log:setLevel(logging.INFO)
+log:info("Log started")
+
+local _require = _G.require
+_G.require = function(module)
+   local rv = _require(module)
+   log:info(format("require: %q rv=%s", module, rv))
+   return rv
+end
+
 local iup = require "iuplua"
 require "iupluaim"
 local snmp = require "snmp"
 local soap_client = require "soap.client"
 local pretty = require "pl.pretty"
-logging = require "logging"
-require "logging.file"
 local copas = require "copas"
 local asynchttp = require("copas.http").request
 local json = require "cjson"
@@ -16,7 +32,8 @@ local fin=assert(io.open(fn, "r"))
 local _PASSWORD = fin:read("*l")
 fin:close()
 --print(_USER, _PASSWORD)
---iup.SetGlobal("IUPLUA_THREADED", "1")
+iup.SetGlobal("IUPLUA_THREADED", "1")
+
 --------------------------------------------------------------------------------
 -- We need this for decoding openweathermap.com json results correctly
 os.setlocale("de_DE.UTF-16")
@@ -28,12 +45,6 @@ local opt = {
    },
    toggleWebcam = true
 }
-
---------------------------------------------------------------------------------
--- Logging stuff
-local log = logging.file("/tmp/disp.log")
-log:setLevel(logging.INFO)
-log:info("Log started")
 
 --------------------------------------------------------------------------------
 -- Couple of generic constants and adjustments
@@ -79,7 +90,7 @@ local forecast, forecastimage = {}, {}
 local screensize =  iup.GetGlobal("SCREENSIZE")
 log:info("screensize: "..screensize)
 --local screensize = "810 x 490"
-local screensize = "814 x 490"
+local screensize = "810 x 490"
 local cnt, mcnt = 1, 1200
 local statcount, statscreen, statgc
 local tempsens = {}
@@ -509,6 +520,7 @@ local function router_cb(ns, meth, ent, soap_headers, body, magic)
       format("%s %2d d %02d:%02d", computers[magic].dname,
 	     r.days, r.hours, r.minutes, r.seconds)
 end
+
 --------------------------------------------------------------------------------
 -- Computer status evaluation and display.
 -- @param index Index to retrieve computer info: display and hostname
@@ -1170,6 +1182,13 @@ local dlg = iup.dialog {
 	    iup.hbox {
 	       screenButton,
 	       contentButton,
+	       iup.button{
+		  title = "Schließen",
+		  font = fonts.button,
+		  expand = horizontal,
+		  tip = "Verlasse das Programm",
+		  action = function(self) os.exit(0) end
+	       },
 	       iup.vbox {
 		  gap = 0,
 		  status(false),
@@ -1178,14 +1197,7 @@ local dlg = iup.dialog {
 		     expand = yes
 		  }
 	       },
-	       iup.button{
-		  title = "Schließen",
-		  font = fonts.button,
-		  expand = horizontal,
-		  tip = "Verlasse das Programm",
-		  action = function(self) os.exit(0) end
-	       },
-	       iup.space{rastersize="2x",expand=no},
+	       iup.space{rastersize="2x",expand=horizontal},
 	    }
 	 },
 	 iup.hbox {
