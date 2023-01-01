@@ -9,15 +9,18 @@ local log = logging.file("/tmp/disp.log")
 log:setLevel(logging.INFO)
 log:info("Log started")
 
+--------------------------------------------------------------------------------
+-- Follow 'require' invocations
 local _require = _G.require
 _G.require = function(module)
    local rv = _require(module)
-   log:info(format("require: %q rv=%s", module, rv))
+   log:debug(format("require: %q rv=%s", module, rv))
    return rv
 end
 
 local iup = require "iuplua"
 require "iupluaim"
+require "iuplua_plot"
 local snmp = require "snmp"
 local soap_client = require "soap.client"
 local pretty = require "pl.pretty"
@@ -31,7 +34,6 @@ local fn = os.getenv("HOME").."/.passwd"
 local fin=assert(io.open(fn, "r"))
 local _PASSWORD = fin:read("*l")
 fin:close()
---print(_USER, _PASSWORD)
 iup.SetGlobal("IUPLUA_THREADED", "1")
 
 --------------------------------------------------------------------------------
@@ -49,7 +51,7 @@ local opt = {
 --------------------------------------------------------------------------------
 -- Couple of generic constants and adjustments
 local format = string.format
-local tinsert = table.insert
+local tinsert, tremove = table.insert, table.remove
 local yes, no = "YES", "NO"
 local on, off = "ON", "OFF"
 local vertical, horizontal = "VERTICAL", "HORIZONTAL"
@@ -85,6 +87,7 @@ local update = {
 local clock
 local date
 local cal
+local tplot
 local weather, weatherimage
 local forecast, forecastimage = {}, {}
 local screensize =  iup.GetGlobal("SCREENSIZE")
@@ -99,6 +102,11 @@ local dtmaxlast = 0
 local cam = {}
 local camcontainer
 local last_status_update = 0
+local nsamples = 50
+local deltaT = 30
+local autoscale = yes
+local tempShow = 5
+local configFile = "dispconfig"
 
 
 
@@ -115,9 +123,16 @@ local fonts = {
    kalender = "Courier New, 10",
    forecast = "Courier New, 12",
    status = "Courier New, 8",
-   button = "Arial, 9"
+   button = "Arial, 9",
+   plot = "Courier New, 8"
 }
 
+local colors = {
+   plot = {
+      fg = "255 255 255",
+      bg = "0 0 0"
+   }
+}
 --------------------------------------------------------------------------------
 -- Local weather context
 local lastWeather
@@ -613,6 +628,39 @@ local function uhrzeit(check)
    end
 end
 
+local tempDat
+
+--------------------------------------------------------------------------------
+-- Store last temperatures.
+-- @param index index of temperature sensor
+-- @param val value
+--------------------------------------------------------------------------------
+local function pushTemp(index, val)
+   local tdat = tempDat[index-1]
+   tinsert(tdat, val)
+   if #tdat == nsamples then
+      tremove(tdat, 1)
+   end
+--   log:info(format("temp %d: %s", index, pretty.write(tdat,"")))
+end
+
+local function saveTemp()
+   local fout, err = io.open(configFile, "w")
+   if not fout then
+      log:error("saveTemp(): "..err)
+   end
+   fout:write("return " .. pretty.write(tempDat))
+   fout:close()
+end
+
+local function restoreTemp()
+   local fin = io.open(configFile, "r")
+   if fin then
+      tempDat = load(fin:read("*a"))()
+   else
+      tempDat = {{},{},{},{},{}}
+   end
+end
 --------------------------------------------------------------------------------
 -- Rechner Callback
 -- @param vb result as varbind, nil in case of an error.
@@ -620,7 +668,7 @@ end
 -- @param index table index.
 -- @param reqid request id.
 -- @param sess session handle.
--- @param magic opaque magic value, here: index of computer
+-- @param magic opaque magic value, here: index of temperature sensor
 --------------------------------------------------------------------------------
 local function temp_cb(vb, err, index, reqid, sess, magic)
    if vb then
@@ -628,6 +676,7 @@ local function temp_cb(vb, err, index, reqid, sess, magic)
       log:debug(format("temp_cb(): %s for sensor %s", tostring(vb), tostring(magic)))
 --      tempsens[magic].title = format("Temp %s: %+5.1f °C", tostring(magic), vb.value) 
       tempsens[magic].title = format("Temp %s: %6s °C", tostring(magic), vb.value) 
+      pushTemp(magic, vb.value)
    else
       -- log error
       log:error(format("temp_cb() error %s", err or "???"))
@@ -955,7 +1004,7 @@ end
 -------------------------------------------------------------------------------
 -- Calendar.
 -- @param check Control what to do:
---              flase - generate diag elements
+--              false - generate diag elements
 --              true  - check status and display result
 -- @return IUP element 
 -------------------------------------------------------------------------------
@@ -972,6 +1021,58 @@ local function kalender(check)
 	 bgcolor = "50 50 50"
       }
       return cal
+   end
+end
+
+-------------------------------------------------------------------------------
+-- Temperature plot
+-- @param check Control what to do:
+--              false - generate diag elements
+--              true  - check status and display result
+-- @return IUP element 
+-------------------------------------------------------------------------------
+local function plot(check)
+   if check == true then
+      tplot.title = "Temperature "..tempShow
+      for i = tempShow,tempShow do
+	 local tdat = tempDat[i-1]
+	 for j = 1, #tdat do
+	    tplot:SetSample(0, j-1, (j-1)*deltaT, tonumber(tdat[j]))
+	 end
+      end
+      tplot.Redraw = yes
+      return true
+   else
+      tplot = iup.plot{
+	 title = "Temperature wait ...",
+	 titlefontsize = 10,
+	 grid = no,
+--	 axs_xlabel = "sample",
+ --	 axs_ylabel = "temp",
+	 axs_x = yes,
+	 axs_y = yes,
+	 font = fonts.plot,
+	 fgcolor = colors.plot.fg,
+	 bgcolor = colors.plot.bg,
+	 axs_xautomin = autoscale,
+	 axs_xautomax = autoscale,
+	 axs_yautomin = autoscale,
+	 axs_yautomax = autoscale,
+	 axs_xmax = nsamples*deltaT,
+	 axs_xmin = 0,
+--	 axs_ymin = -10.0,
+--	 axs_ymax = 50.0,
+--	 axs_xcrossorigin = yes,
+	 marginleft = 20,
+	 marginebottom = 20
+      }
+      tplot:Begin(0)
+      for i = 1, nsamples do
+	 tplot:Add((i-1)*deltaT, 0)
+      end
+      local ds = tplot:End()
+      tplot.ds_mode = "BAR"
+      return tplot
    end
 end
 
@@ -1036,16 +1137,43 @@ local function icon(which)
       childoffset = "5x10",
       tabpadding = "5x5",
       iup.flatframe{
+	 webcam(false),
+	 marginleft = 5,
+	 margintop = 5,
+	 frame = no,
+      },
+      iup.flatframe{
 	 marginleft = 5,
 	 margintop = 5,
 	 kalender(false),
 	 frame = no,
       },
       iup.flatframe{
-	 webcam(false),
-	 marginleft = 5,
-	 margintop = 5,
-	 frame = no,
+	 iup.vbox{
+	    plot(false),
+	 }
+      },
+      iup.flatframe{
+	 iup.vbox{
+	    iup.label{
+	       title = "Temp Sensor Selection",
+	    },
+	    iup.list{
+--	       "sensor 1",
+	       "sensor 2",
+	       "sensor 3",
+	       "sensor 4",
+	       "sensor 5",
+	       dropdown = yes,
+	       value = tempShow-1,
+	       action = function(self, item, state)
+		  if state == 1 then
+		     tempShow = self.value + 1
+		     plot(true)
+		  end
+	       end
+	    }
+	 }
       },
       iup.flatframe{
 	 iup.vbox{
@@ -1094,9 +1222,11 @@ local function icon(which)
 	 margintop = 5,
 	 frame = no
       },
-      tabtitle0 = "Kalender",
-      tabtitle1 = " Kamera ",
-      tabtitle2 = "Options"
+      tabtitle0 = "Kamera ",
+      tabtitle1 = "Kalender",
+      tabtitle2 = "Temp    ",
+      tabtitle3 = "Sensor",
+      tabtitle4 = "Options ",
    }
    if which == "cal" then
       icontab.valuepos = 0
@@ -1153,7 +1283,8 @@ local dlg = iup.dialog {
 			iup.space{size="x1", expand=yes},
 			tempsensor(2, false),
 			tempsensor(3, false),
-			tempsensor(4, false)
+			tempsensor(4, false),
+			tempsensor(5, false)
 		     }
 		  },
 		  wetter(false)
@@ -1187,7 +1318,10 @@ local dlg = iup.dialog {
 		  font = fonts.button,
 		  expand = horizontal,
 		  tip = "Verlasse das Programm",
-		  action = function(self) os.exit(0) end
+		  action = function(self)
+		     saveTemp()
+		     os.exit(0)
+		  end
 	       },
 	       iup.vbox {
 		  gap = 0,
@@ -1206,6 +1340,9 @@ local dlg = iup.dialog {
       }
    }
 }
+
+-- read temperature values 
+restoreTemp()
 
 -- show the dialog
 dlg:show()
@@ -1242,10 +1379,11 @@ local timer = iup.timer{
 
       -- 30 seconds update temperatures
       if update.tempsensor then
-	 if cnt % 60 == 8 then
-	    for i = 2, 4 do
+	 if cnt % (deltaT*2) == 8 then
+	    for i = 2, 5 do
 	       tempsensor(i, true)
 	    end
+	    plot(true)
 	 end
       end
 
