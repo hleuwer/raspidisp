@@ -102,10 +102,14 @@ local dtmaxlast = 0
 local cam = {}
 local camcontainer
 local last_status_update = 0
-local nsamples = 50
-local deltaT = 30
-local autoscale = yes
-local tempShow = 5
+-- temp plot parameters
+-- 50 samples * 0.5 min = 15 minutes
+-- 60 sample * 2 min = 120 minutes
+-- 120 samples * 1 min = 120 minutes
+local nsamples = 60 -- samples to plot
+local deltaT = 120   -- time between samples
+local autoscale = yes  -- autoscale axis
+local tempShow = 5  -- temp sensor to plot
 local configFile = "dispconfig"
 
 
@@ -1037,7 +1041,7 @@ local function plot(check)
       for i = tempShow,tempShow do
 	 local tdat = tempDat[i-1]
 	 for j = 1, #tdat do
-	    tplot:SetSample(0, j-1, (j-1)*deltaT, tonumber(tdat[j]))
+	    tplot:SetSample(0, j-1, (j-1)*deltaT/60, tonumber(tdat[j]))
 	 end
       end
       tplot.Redraw = yes
@@ -1047,8 +1051,8 @@ local function plot(check)
 	 title = "Temperature wait ...",
 	 titlefontsize = 10,
 	 grid = no,
---	 axs_xlabel = "sample",
- --	 axs_ylabel = "temp",
+	 axs_xlabel = "time [min]",
+-- 	 axs_ylabel = "temp [°C]",
 	 axs_x = yes,
 	 axs_y = yes,
 	 font = fonts.plot,
@@ -1062,7 +1066,9 @@ local function plot(check)
 	 axs_xmin = 0,
 --	 axs_ymin = -10.0,
 --	 axs_ymax = 50.0,
---	 axs_xcrossorigin = yes,
+	 --	 axs_xcrossorigin = yes,
+	 grid = horizontal,
+	 gridlinestyle = "DASHED",
 	 marginleft = 20,
 	 marginebottom = 20
       }
@@ -1072,6 +1078,7 @@ local function plot(check)
       end
       local ds = tplot:End()
       tplot.ds_mode = "BAR"
+      tplot.ds_color = "255 0 0"
       return tplot
    end
 end
