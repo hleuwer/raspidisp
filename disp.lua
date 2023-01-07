@@ -517,7 +517,7 @@ local function rechner_cb(vb, err, index, reqid, sess, magic)
 	 format("%s %2d d %02d:%02d", computers[magic].dname,
 		vb.value.days, vb.value.hours, vb.value.minutes)
    else
-      log:error(format("rechner_cb() error %s for rechner %q",
+      log:info(format("rechner_cb() error %s for rechner %q",
 		       err, computers[magic].dname))
       computers[magic].label.title = computers[magic].dname .. " down"
    end
@@ -642,10 +642,10 @@ local tempDat
 local function pushTemp(index, val)
    local tdat = tempDat[index-1]
    tinsert(tdat, val)
+   local n = #tdat
    if #tdat == nsamples then
       tremove(tdat, 1)
    end
---   log:info(format("temp %d: %s", index, pretty.write(tdat,"")))
 end
 
 local function saveTemp()
@@ -653,7 +653,7 @@ local function saveTemp()
    if not fout then
       log:error("saveTemp(): "..err)
    end
-   fout:write("return " .. pretty.write(tempDat))
+   fout:write("return " .. pretty.write(tempDat,""))
    fout:close()
 end
 
@@ -1069,7 +1069,7 @@ local function plot(check)
 	 --	 axs_xcrossorigin = yes,
 	 grid = horizontal,
 	 gridlinestyle = "DASHED",
-	 marginleft = 20,
+	 marginleft = 30,
 	 marginebottom = 20
       }
       tplot:Begin(0)
