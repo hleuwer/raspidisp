@@ -103,9 +103,7 @@ local cam = {}
 local camcontainer
 local last_status_update = 0
 -- temp plot parameters
--- 50 samples * 0.5 min = 15 minutes
 -- 60 sample * 2 min = 120 minutes
--- 120 samples * 1 min = 120 minutes
 local nsamples = 60 -- samples to plot
 local deltaT = 120   -- time between samples
 local autoscale = yes  -- autoscale axis
@@ -1041,7 +1039,7 @@ local function plot(check)
       for i = tempShow,tempShow do
 	 local tdat = tempDat[i-1]
 	 for j = 1, #tdat do
-	    tplot:SetSample(0, j-1, (j-1)*deltaT/60, tonumber(tdat[j]))
+	    tplot:SetSample(0, j-1, (j-1), tonumber(tdat[j]))
 	 end
       end
       tplot.Redraw = yes
@@ -1062,11 +1060,11 @@ local function plot(check)
 	 axs_xautomax = autoscale,
 	 axs_yautomin = autoscale,
 	 axs_yautomax = autoscale,
-	 axs_xmax = nsamples*deltaT,
+	 axs_xmax = nsamples,
 	 axs_xmin = 0,
 --	 axs_ymin = -10.0,
 --	 axs_ymax = 50.0,
-	 --	 axs_xcrossorigin = yes,
+--	  axs_xcrossorigin = yes,
 	 grid = horizontal,
 	 gridlinestyle = "DASHED",
 	 marginleft = 30,
@@ -1074,7 +1072,7 @@ local function plot(check)
       }
       tplot:Begin(0)
       for i = 1, nsamples do
-	 tplot:Add((i-1)*deltaT, 0)
+	 tplot:Add((i-1), 0)
       end
       local ds = tplot:End()
       tplot.ds_mode = "BAR"
@@ -1386,7 +1384,7 @@ local timer = iup.timer{
 
       -- 30 seconds update temperatures
       if update.tempsensor then
-	 if cnt % (deltaT*2) == 8 then
+	 if cnt % (deltaT * 2) == 8 then
 	    for i = 2, 5 do
 	       tempsensor(i, true)
 	    end
